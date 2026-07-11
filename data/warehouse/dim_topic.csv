@@ -1,9 +1,9 @@
 topic_name,topic_id
-vision,1
-multimodal,2
-llm,3
+agents,1
+llm,2
+multimodal,3
 rag,4
-agents,5
-reasoning,6
+reasoning,5
+rl,6
 robotics,7
-rl,8
+vision,8

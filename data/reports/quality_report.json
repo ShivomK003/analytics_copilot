@@ -1,11 +1,11 @@
 {
-    "papers_fetched": 514,
-    "missing_paper_id": 0,
-    "missing_titles": 0,
-    "missing_abstracts": 0,
-    "missing_authors": 0,
-    "invalid_published_date": 0,
-    "duplicate_paper_id": 0,
-    "papers_without_detected_topics": 131,
-    "status": "PASS"
+  "papers_fetched": 494,
+  "missing_paper_id": 0,
+  "missing_titles": 0,
+  "missing_abstracts": 0,
+  "missing_authors": 0,
+  "invalid_published_date": 0,
+  "duplicate_paper_id": 0,
+  "papers_without_detected_topics": 101,
+  "status": "PASS"
 }

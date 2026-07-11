@@ -1,35 +1,23 @@
+import logging
 import time
-from pathlib import Path
 from urllib.parse import urlencode
 
 import feedparser
 import pandas as pd
 import requests
 
-RAW_DIR = Path("../data/raw")
-RAW_DIR.mkdir(parents=True, exist_ok=True)
-
-OUTPUT_PATH = RAW_DIR / "arxiv_papers_raw.csv"
+from etl.config import ARXIV_CATEGORIES, ARXIV_MAX_RESULTS, RAW_DIR
 
 ARXIV_API_URL = "https://export.arxiv.org/api/query"
-
-CATEGORIES = [
-    "cs.AI",  # Artificial Intelligence
-    "cs.LG",  # Machine Learning
-    "cs.CL",  # Computation and Language / NLP
-    "cs.CV",  # Computer Vision
-    "cs.RO",  # Robotics
-    "stat.ML",  # Machine Learning Statistics
-]
-
-MAX_RESULTS_PER_CATEGORY = 100
+OUTPUT_PATH = RAW_DIR / "arxiv_papers_raw.csv"
+REQUEST_DELAY_SECONDS = 3
 
 
-def build_query(category: str) -> str:
+def build_query(category: str, max_results: int = ARXIV_MAX_RESULTS) -> str:
     params = {
         "search_query": f"cat:{category}",
         "start": 0,
-        "max_results": MAX_RESULTS_PER_CATEGORY,
+        "max_results": max_results,
         "sortBy": "submittedDate",
         "sortOrder": "descending",
     }
@@ -39,73 +27,87 @@ def build_query(category: str) -> str:
 def clean_text(text: str) -> str:
     if not text:
         return ""
-    return " ".join(text.replace("\n", " ").split())
+    return " ".join(str(text).replace("\n", " ").split())
 
 
-def fetch_category(category: str) -> list[dict]:
+def fetch_category(
+    category: str,
+    logger: logging.Logger | None = None,
+    session: requests.Session | None = None,
+) -> list[dict]:
     url = build_query(category)
-    print(f"Fetching {category}...")
+    active_logger = logger or logging.getLogger("etl")
+    client = session or requests.Session()
 
-    response = requests.get(url, timeout=30)
-    response.raise_for_status()
+    active_logger.info("Fetching arXiv category %s", category)
+
+    try:
+        response = client.get(url, timeout=30)
+        response.raise_for_status()
+    except requests.RequestException as exc:
+        raise RuntimeError(f"Failed to fetch arXiv data for category {category}") from exc
 
     feed = feedparser.parse(response.text)
-    papers = []
+    papers: list[dict] = []
 
     for entry in feed.entries:
-        arxiv_id = entry.id.split("/abs/")[-1]
+        arxiv_url = getattr(entry, "id", "")
+        paper_id = arxiv_url.split("/abs/")[-1] if arxiv_url else ""
+        authors = [author.name for author in getattr(entry, "authors", [])]
+        categories = [tag["term"] for tag in getattr(entry, "tags", [])]
 
-        authors = (
-            [author.name for author in entry.authors]
-            if hasattr(entry, "authors")
-            else []
+        pdf_url = next(
+            (
+                link.href
+                for link in getattr(entry, "links", [])
+                if getattr(link, "type", "") == "application/pdf"
+            ),
+            arxiv_url.replace("/abs/", "/pdf/") if arxiv_url else "",
         )
-
-        categories = []
-        if hasattr(entry, "tags"):
-            categories = [tag["term"] for tag in entry.tags]
 
         papers.append(
             {
-                "paper_id": arxiv_id,
-                "title": clean_text(entry.title),
-                "abstract": clean_text(entry.summary),
+                "paper_id": paper_id,
+                "title": clean_text(getattr(entry, "title", "")),
+                "abstract": clean_text(getattr(entry, "summary", "")),
                 "authors": ", ".join(authors),
                 "primary_category": category,
                 "all_categories": ", ".join(categories),
-                "published_date": entry.published,
-                "updated_date": entry.updated,
-                "pdf_url": entry.link.replace("/abs/", "/pdf/"),
-                "arxiv_url": entry.link,
+                "published_date": getattr(entry, "published", ""),
+                "updated_date": getattr(entry, "updated", ""),
+                "pdf_url": pdf_url,
+                "arxiv_url": arxiv_url,
             }
         )
 
-    print(f"Fetched {len(papers)} papers for {category}")
+    active_logger.info("Fetched %s papers for %s", len(papers), category)
     return papers
 
 
-def main():
-    all_papers = []
+def extract_arxiv_data(
+    logger: logging.Logger | None = None,
+    categories: list[str] | None = None,
+) -> dict[str, int]:
+    active_logger = logger or logging.getLogger("etl")
+    selected_categories = categories or ARXIV_CATEGORIES
 
-    for category in CATEGORIES:
-        papers = fetch_category(category)
-        all_papers.extend(papers)
+    all_papers: list[dict] = []
+    with requests.Session() as session:
+        for index, category in enumerate(selected_categories):
+            all_papers.extend(fetch_category(category, logger=active_logger, session=session))
+            if index < len(selected_categories) - 1:
+                time.sleep(REQUEST_DELAY_SECONDS)
 
-        # Be polite to arXiv API.
-        time.sleep(3)
+    raw_df = pd.DataFrame(all_papers)
+    raw_df.to_csv(OUTPUT_PATH, index=False)
 
-    df = pd.DataFrame(all_papers)
+    metrics = {"papers_fetched": int(len(raw_df))}
+    active_logger.info("Saved raw arXiv data to %s", OUTPUT_PATH)
+    return metrics
 
-    before = len(df)
-    df = df.drop_duplicates(subset=["paper_id"])
-    after = len(df)
 
-    df.to_csv(OUTPUT_PATH, index=False)
-
-    print("\nDone.")
-    print(f"Rows before dedupe: {before}")
-    print(f"Rows after dedupe: {after}")
-    print(f"Saved to: {OUTPUT_PATH}")
+def main() -> None:
+    extract_arxiv_data()
 
 
 if __name__ == "__main__":
