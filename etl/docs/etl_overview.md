@@ -43,7 +43,9 @@ etl/
 |-- validate/
 |-- warehouse/
 |-- load/
-`-- monitoring/
+|-- monitoring/
+|-- docs/
+`-- ETL_process.md
 ```
 
 ## File Responsibilities

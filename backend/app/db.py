@@ -1,29 +1,98 @@
-from pathlib import Path
+from __future__ import annotations
+
 import os
+from collections.abc import Sequence
+from pathlib import Path
+from typing import Any
+
 import psycopg2
 from dotenv import load_dotenv
+from psycopg2.extensions import connection
 from psycopg2.extras import RealDictCursor
 
-ROOT_DIR = Path(__file__).resolve().parents[2]
-load_dotenv(ROOT_DIR / "backend" / ".env")
+
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+ENV_PATH = BACKEND_DIR / ".env"
+
+load_dotenv(ENV_PATH)
 
 
-def get_connection():
+REQUIRED_DATABASE_VARIABLES = (
+    "SUPABASE_HOST",
+    "SUPABASE_PORT",
+    "SUPABASE_DB",
+    "SUPABASE_USER",
+    "SUPABASE_PASSWORD",
+)
+
+
+def _validate_database_environment() -> None:
+    """Raise an error when required database settings are missing."""
+
+    missing_variables = [
+        variable for variable in REQUIRED_DATABASE_VARIABLES if not os.getenv(variable)
+    ]
+
+    if missing_variables:
+        missing = ", ".join(missing_variables)
+        raise RuntimeError(
+            f"Missing required database environment variables: {missing}"
+        )
+
+
+def get_connection() -> connection:
+    """Create a connection to the Supabase PostgreSQL database."""
+
+    _validate_database_environment()
+
     return psycopg2.connect(
-        host=os.getenv("SUPABASE_HOST"),
-        port=os.getenv("SUPABASE_PORT"),
-        dbname=os.getenv("SUPABASE_DB"),
-        user=os.getenv("SUPABASE_USER"),
-        password=os.getenv("SUPABASE_PASSWORD"),
+        host=os.environ["SUPABASE_HOST"],
+        port=os.environ["SUPABASE_PORT"],
+        dbname=os.environ["SUPABASE_DB"],
+        user=os.environ["SUPABASE_USER"],
+        password=os.environ["SUPABASE_PASSWORD"],
+        sslmode=os.getenv("SUPABASE_SSLMODE", "require"),
+        connect_timeout=15,
         cursor_factory=RealDictCursor,
     )
 
 
-def fetch_all(query: str):
-    conn = get_connection()
-    try:
-        with conn.cursor() as cur:
-            cur.execute(query)
-            return cur.fetchall()
-    finally:
-        conn.close()
+def fetch_all(
+    query: str,
+    params: Sequence[Any] | None = None,
+) -> list[dict[str, Any]]:
+    """Execute a SELECT query and return all rows."""
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(query, params)
+            rows = cursor.fetchall()
+
+    return [dict(row) for row in rows]
+
+
+def fetch_one(
+    query: str,
+    params: Sequence[Any] | None = None,
+) -> dict[str, Any] | None:
+    """Execute a SELECT query and return one row."""
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(query, params)
+            row = cursor.fetchone()
+
+    return dict(row) if row is not None else None
+
+
+def execute_query(
+    query: str,
+    params: Sequence[Any] | None = None,
+) -> None:
+    """Execute a data-changing or DDL statement and commit it."""
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(query, params)
+
+        conn.commit()

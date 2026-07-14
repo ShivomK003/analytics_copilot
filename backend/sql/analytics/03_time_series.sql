@@ -1,0 +1,1 @@
+-- Daily, weekly, monthly, and cumulative paper metrics.

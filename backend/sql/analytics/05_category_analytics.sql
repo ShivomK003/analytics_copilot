@@ -1,0 +1,1 @@
+-- Category distribution, trends, and growth analytics.

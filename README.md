@@ -1,31 +1,63 @@
-## ETL Pipeline
+# Analytics Copilot
 
-The ETL pipeline fetches recent AI-related papers from arXiv, standardizes and validates them, builds warehouse-style CSVs, incrementally loads only new papers into Supabase PostgreSQL, and records run metadata plus logs for each execution.
+Analytics Copilot is a full-stack project for collecting AI research papers, loading them into a warehouse-style PostgreSQL model, and exposing analytics through a backend API and frontend dashboard.
 
-Run the pipeline with:
+## Project Areas
+
+- `etl/`: extraction, transformation, validation, warehouse generation, loading, and ETL documentation
+- `backend/`: API and database access layer
+- `frontend/`: dashboard client
+- `sql/`: warehouse schema and analytics queries
+- `data/`: generated pipeline outputs and reports
+- `tests/`: automated ETL-focused test coverage
+- `.github/workflows/`: scheduled ETL automation
+
+## Main Workflows
+
+### Run the ETL pipeline
 
 ```bash
 python -m etl.run_pipeline
 ```
 
-Run the ETL test suite with:
+### Run the backend
+
+```bash
+uvicorn backend.app.main:app --reload
+```
+
+### Run the frontend
+
+```bash
+cd frontend
+npm run dev
+```
+
+### Run tests
 
 ```bash
 python -m pytest tests -q
 ```
 
-Current ETL status from the latest verified local run:
+## Documentation
 
-- raw papers fetched: `600`
-- unique clean papers: `494`
-- duplicates removed during transformation: `106`
-- validation status: `PASS`
-- first incremental run: `494` new papers
-- immediate second run: `0` new papers and `494` duplicates skipped
-- failure-path tests: `6 passed`
+- ETL process guide: [etl/ETL_process.md](etl/ETL_process.md)
+- ETL overview: [etl/docs/etl_overview.md](etl/docs/etl_overview.md)
+- ETL data model: [etl/docs/data_model.md](etl/docs/data_model.md)
+- ETL runbook: [etl/docs/etl_runbook.md](etl/docs/etl_runbook.md)
+- Frontend starter notes: [frontend/README.md](frontend/README.md)
 
-Documentation:
+## Current Structure
 
-- [ETL Overview](docs/etl_overview.md)
-- [Data Model](docs/data_model.md)
-- [ETL Runbook](docs/etl_runbook.md)
+```text
+analytics_copilot/
+|-- backend/
+|-- data/
+|-- etl/
+|   |-- docs/
+|   `-- ETL_process.md
+|-- frontend/
+|-- sql/
+|-- tests/
+`-- README.md
+```
