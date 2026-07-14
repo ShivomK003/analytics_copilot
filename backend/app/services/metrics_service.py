@@ -5,19 +5,7 @@ from typing import Any
 from app.db import fetch_all, fetch_one
 
 
-def get_total_papers() -> int:
-    """Return the warehouse paper total from the KPI layer."""
-
-    result = fetch_one(
-        """
-        select total_papers
-        from vw_total_papers;
-        """
-    )
-
-    return int(result["total_papers"]) if result else 0
-
-
+## KPI SERVICE QUERIES ##
 def get_publication_kpis() -> dict[str, int]:
     """Return current publication-period KPI values."""
 
@@ -171,6 +159,19 @@ def get_latest_papers(limit: int = 10) -> list[dict[str, Any]]:
         """,
         (limit,),
     )
+
+
+def get_total_papers() -> int:
+    """Return the warehouse paper total from the KPI layer."""
+
+    result = fetch_one(
+        """
+        select total_papers
+        from vw_total_papers;
+        """
+    )
+
+    return int(result["total_papers"]) if result else 0
 
 
 def get_dashboard_metrics() -> dict[str, Any]:
