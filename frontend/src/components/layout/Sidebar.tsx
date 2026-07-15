@@ -6,7 +6,7 @@ export function Sidebar() {
     <aside className="sidebar">
       <div className="sidebar-inner">
         <div className="brand-block">
-          <p className="brand-kicker">Research dashboard</p>
+          <p className="brand-kicker">AI research intelligence</p>
           <NavLink className="brand-link" to="/overview">
             <span>AI Research</span>
             <span>Intelligence Copilot</span>
@@ -14,6 +14,7 @@ export function Sidebar() {
         </div>
 
         <nav aria-label="Primary" className="sidebar-nav">
+          <p className="sidebar-group-label">Workspace</p>
           <ul className="nav-list">
             {navigationItems.map(({ icon: Icon, label, path }) => (
               <li key={path}>
@@ -30,11 +31,12 @@ export function Sidebar() {
         </nav>
 
         <div className="sidebar-footer">
-          <p className="sidebar-footer-label">Foundation status</p>
-          <p>
-            Frontend shell is in place. Live backend connection and dashboard
-            analytics are intentionally deferred to Phase C.
-          </p>
+          <p className="sidebar-footer-label">System status</p>
+          <p>Tracking research activity across the dashboard shell while live metrics come online next.</p>
+          <div className="sidebar-footer-chips" aria-label="System highlights">
+            <span className="sidebar-chip">Tracking 6 AI domains</span>
+            <span className="sidebar-chip">Updated daily via pipeline</span>
+          </div>
         </div>
       </div>
     </aside>

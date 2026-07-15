@@ -1,16 +1,20 @@
 import type { RefObject } from "react";
-import { Menu } from "lucide-react";
+import { Menu, RefreshCw } from "lucide-react";
 
 type TopHeaderProps = {
   currentPageTitle: string;
+  isRefreshing?: boolean;
   menuButtonRef: RefObject<HTMLButtonElement | null>;
   onOpenNavigation: () => void;
+  onRefresh?: () => void;
 };
 
 export function TopHeader({
   currentPageTitle,
+  isRefreshing = false,
   menuButtonRef,
   onOpenNavigation,
+  onRefresh,
 }: TopHeaderProps) {
   return (
     <header className="top-header">
@@ -31,6 +35,15 @@ export function TopHeader({
       </div>
       <div className="top-header-utility" aria-label="Future dashboard utility area">
         <span className="status-pill">Data actions added in Phase C</span>
+        <button
+          aria-label={onRefresh ? "Refresh overview data" : "Refresh data available on overview"}
+          className={`icon-button${isRefreshing ? " is-refreshing" : ""}${!onRefresh ? " is-disabled" : ""}`}
+          disabled={!onRefresh}
+          onClick={onRefresh}
+          type="button"
+        >
+          <RefreshCw aria-hidden="true" size={16} />
+        </button>
       </div>
     </header>
   );

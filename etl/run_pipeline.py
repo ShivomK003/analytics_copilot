@@ -24,11 +24,23 @@ def run_pipeline() -> dict[str, object]:
     papers_fetched = 0
     new_papers_loaded = 0
     duplicates_skipped = 0
+    categories_attempted = 0
+    categories_succeeded = 0
+    categories_failed = 0
 
     try:
         extract_metrics = extract_arxiv_data(logger=logger)
         papers_fetched = int(extract_metrics["papers_fetched"])
-        logger.info("Papers fetched: %s", papers_fetched)
+        categories_attempted = int(extract_metrics.get("categories_attempted", 0))
+        categories_succeeded = int(extract_metrics.get("categories_succeeded", 0))
+        categories_failed = int(extract_metrics.get("categories_failed", 0))
+        logger.info(
+            "Papers fetched: %s (categories attempted: %s, succeeded: %s, failed: %s)",
+            papers_fetched,
+            categories_attempted,
+            categories_succeeded,
+            categories_failed,
+        )
 
         transform_metrics = transform_arxiv_data(logger=logger)
         logger.info(
@@ -74,6 +86,9 @@ def run_pipeline() -> dict[str, object]:
         return {
             "run_id": run_id,
             "papers_fetched": papers_fetched,
+            "categories_attempted": categories_attempted,
+            "categories_succeeded": categories_succeeded,
+            "categories_failed": categories_failed,
             "new_papers_loaded": new_papers_loaded,
             "duplicates_skipped": duplicates_skipped,
             "duration_seconds": duration_seconds,

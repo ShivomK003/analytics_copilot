@@ -10,7 +10,7 @@ export function PageHeader({ title, description, action }: PageHeaderProps) {
   return (
     <header className="page-header">
       <div className="page-header-copy">
-        <p className="page-eyebrow">Dashboard phase B</p>
+        <p className="page-eyebrow">Research intelligence workspace</p>
         <h1>{title}</h1>
         <p>{description}</p>
       </div>
