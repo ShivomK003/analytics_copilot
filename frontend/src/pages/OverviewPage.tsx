@@ -1,12 +1,13 @@
 import {
   Activity,
   BookOpenText,
-  ChartColumnIncreasing,
   FileStack,
-  Lightbulb,
   Radar,
   UsersRound,
 } from "lucide-react";
+import { TopicDistributionChart } from "../components/charts/TopicDistributionChart";
+import { WeeklyTrendChart } from "../components/charts/WeeklyTrendChart";
+import { EmptyState } from "../components/feedback/EmptyState";
 import { ErrorState } from "../components/feedback/ErrorState";
 import { PageSkeleton } from "../components/feedback/PageSkeleton";
 import { PageContainer } from "../components/layout/PageContainer";
@@ -15,11 +16,7 @@ import { PageSection } from "../components/layout/PageSection";
 import { ResponsiveGrid } from "../components/layout/ResponsiveGrid";
 import { Card } from "../components/ui/Card";
 import { useDashboardHome } from "../hooks/useDashboardHome";
-import type {
-  LatestPaperItem,
-  TopicGrowthItem,
-  WeeklyTrendPoint,
-} from "../types/dashboard";
+import type { LatestPaperItem } from "../types/dashboard";
 
 const PAGE_TITLE = "Overview";
 const PAGE_DESCRIPTION =
@@ -52,17 +49,30 @@ export function OverviewPage() {
     );
   }
 
-  if (!data) {
-    return null;
+  if (!data || !data.kpis) {
+    return (
+      <PageContainer>
+        <PageHeader description={PAGE_DESCRIPTION} title={PAGE_TITLE} />
+        <ErrorState
+          description="The dashboard response did not include the overview KPI payload."
+          onRetry={() => {
+            void refetch();
+          }}
+          retryLabel="Retry overview fetch"
+          title="Overview data is incomplete"
+        />
+      </PageContainer>
+    );
   }
 
-  const latestWeek = data.weekly_trend.at(-1);
-  const leadingTopics = data.topic_distribution.slice(0, 5);
-  const leadingTopicGrowth = data.topic_growth.slice(0, 3);
-  const leadingCategories = data.primary_category_distribution.slice(0, 4);
-  const leadingAuthors = data.top_authors.slice(0, 5);
-  const latestPapers = data.latest_papers.slice(0, 5);
-  const leadingCategoryGrowth = data.category_growth[0];
+  const kpis = data.kpis;
+  const weeklyTrend = data.weekly_trend ?? [];
+  const topicDistribution = data.topic_distribution ?? [];
+  const topAuthors = data.top_authors ?? [];
+  const latestPapers = data.latest_papers ?? [];
+
+  const leadingAuthors = topAuthors.slice(0, 5);
+  const recentPapers = latestPapers.slice(0, 5);
 
   return (
     <PageContainer>
@@ -82,33 +92,33 @@ export function OverviewPage() {
           <h2>AI Research Activity</h2>
           <div className="overview-hero-metrics">
             <p className="overview-hero-primary">
-              {formatNumber(data.kpis.total_papers)} papers tracked
+              {formatNumber(kpis?.total_papers ?? 0)} papers tracked
             </p>
             <div className="overview-hero-secondary">
               <span>
-                {formatNumber(data.kpis.papers_published_this_week)} published this week
+                {formatNumber(kpis?.papers_published_this_week ?? 0)} published this week
               </span>
               <span className="overview-hero-growth">
-                {formatNumber(data.kpis.papers_published_this_month)} this month
+                {formatNumber(kpis?.papers_published_this_month ?? 0)} this month
               </span>
             </div>
           </div>
           <div className="overview-hero-chips">
             <span className="overview-hero-chip">
-              Tracking {formatNumber(data.primary_category_distribution.length)} AI domains
+              Topics detected: {formatNumber(topicDistribution.length ?? 0)}
             </span>
             <span className="overview-hero-chip">
-              Updated {data.kpis.latest_etl_status?.toLowerCase() ?? "via pipeline"}
+              Updated {kpis?.latest_etl_status?.toLowerCase() ?? "via pipeline"}
             </span>
             <span className="overview-hero-chip">
-              Topics detected: {formatNumber(data.topic_distribution.length)}
+              Top authors tracked: {formatNumber(topAuthors.length ?? 0)}
             </span>
           </div>
         </div>
         <div className="overview-hero-visual" aria-hidden="true">
           <div className="hero-visual-panel">
             <div className="hero-bars">
-              {buildTrendHeights(data.weekly_trend, 4).map((height, index) => (
+              {buildHeroHeights(weeklyTrend, 4).map((height, index) => (
                 <span key={index} style={{ height: `${height}%` }} />
               ))}
             </div>
@@ -137,10 +147,10 @@ export function OverviewPage() {
             tone="accent"
           >
             <div className="overview-stat">
-              <strong>{formatNumber(data.kpis.total_papers)}</strong>
+              <strong>{formatNumber(kpis?.total_papers ?? 0)}</strong>
               <span>
-                {formatNumber(data.kpis.papers_published_this_week)} this week and{" "}
-                {formatNumber(data.kpis.papers_published_this_month)} this month
+                {formatNumber(kpis?.papers_published_this_week ?? 0)} this week and{" "}
+                {formatNumber(kpis?.papers_published_this_month ?? 0)} this month
               </span>
             </div>
           </Card>
@@ -152,9 +162,9 @@ export function OverviewPage() {
             tone="info"
           >
             <div className="overview-stat">
-              <strong>{data.kpis.top_topic_name ?? "No topic data yet"}</strong>
+              <strong>{kpis?.top_topic_name ?? "--"}</strong>
               <span>
-                {formatNumber(data.kpis.top_topic_paper_count)} papers linked to the leading topic
+                {formatNumber(kpis?.top_topic_paper_count ?? 0)} papers linked to the leading topic
               </span>
             </div>
           </Card>
@@ -166,23 +176,23 @@ export function OverviewPage() {
             tone="success"
           >
             <div className="overview-stat">
-              <strong>{data.kpis.top_author_name ?? "No author data yet"}</strong>
+              <strong>{kpis?.top_author_name ?? "--"}</strong>
               <span>
-                {formatNumber(data.kpis.top_author_paper_count)} papers across the current warehouse
+                {formatNumber(kpis?.top_author_paper_count ?? 0)} papers across the current warehouse
               </span>
             </div>
           </Card>
           <Card
-            description="Leading primary category"
+            description="Leading category"
             eyebrow="Live metric"
             icon={<FileStack size={18} />}
             title="Category mix"
             tone="warning"
           >
             <div className="overview-stat">
-              <strong>{data.kpis.top_category_code ?? "No category data yet"}</strong>
+              <strong>{kpis?.top_category_code ?? "--"}</strong>
               <span>
-                {formatNumber(data.kpis.top_category_paper_count)} papers in the strongest category
+                {formatNumber(kpis?.top_category_paper_count ?? 0)} papers in the strongest category
               </span>
             </div>
           </Card>
@@ -190,158 +200,47 @@ export function OverviewPage() {
       </PageSection>
 
       <PageSection
-        description="Weekly publication counts are connected and ready for a dedicated chart component."
+        description="Weekly publication counts stay visible during background refreshes and are ready for chart binding."
         eyebrow="Research flow"
         title="Publication Activity"
       >
         <ResponsiveGrid variant="wide">
           <Card
-            description="Prepared for chart rendering"
-            eyebrow="Live dataset"
-            icon={<ChartColumnIncreasing size={18} />}
+            description="Weekly paper counts"
+            eyebrow="Connected chart"
+            icon={<Activity size={18} />}
             title="Weekly publication trend"
             tone="accent"
           >
-            <div className="placeholder-preview">
-              <div className="data-bar-chart" aria-label="Weekly publication counts">
-                {buildTrendHeights(data.weekly_trend, 6).map((height, index) => (
-                  <span key={index} style={{ height: `${height}%` }} />
-                ))}
-              </div>
-              <div className="overview-data-stack">
-                <p>
-                  Latest week:{" "}
-                  <strong>
-                    {formatDate(latestWeek?.week_start)} · {formatNumber(latestWeek?.paper_count)} papers
-                  </strong>
-                </p>
-                <p>The chart layer can now bind directly to the connected `weekly_trend` series.</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card
-            description="Live pipeline and collaboration context"
-            eyebrow="Connected summary"
-            icon={<Lightbulb size={18} />}
-            title="Momentum context"
-            tone="info"
-          >
-            <div className="overview-data-stack">
-              <p>
-                Latest ETL run: <strong>{data.kpis.latest_etl_status ?? "Unavailable"}</strong>
-              </p>
-              <p>
-                Average authors per paper:{" "}
-                <strong>{formatDecimal(data.author_statistics.average_authors_per_paper)}</strong>
-              </p>
-              <p>
-                Strongest category movement:{" "}
-                <strong>
-                  {leadingCategoryGrowth
-                    ? `${leadingCategoryGrowth.category_code} (${signedNumber(
-                        leadingCategoryGrowth.absolute_growth,
-                      )})`
-                    : "No growth data yet"}
-                </strong>
-              </p>
-            </div>
+            <WeeklyTrendChart data={weeklyTrend} />
           </Card>
         </ResponsiveGrid>
       </PageSection>
 
       <PageSection
-        description="Topic distribution, growth, and emerging movement now come from the live backend response."
+        description="Topic distribution is visualized using the leading detected topics from the connected overview dataset."
         eyebrow="Signals"
-        title="Topic Intelligence"
+        title="Topic Distribution"
       >
         <ResponsiveGrid variant="standard">
           <Card
-            description="Top topic distribution"
-            eyebrow="Connected list"
+            description="Top 8 topics by paper count"
+            eyebrow="Connected chart"
             icon={<Radar size={18} />}
             title="Topic distribution"
             tone="accent"
           >
-            <ul className="overview-list">
-              {leadingTopics.map((topic) => (
-                <li key={topic.topic_id}>
-                  <span>{topic.topic_name}</span>
-                  <strong>
-                    {formatNumber(topic.paper_count)} · {formatPercent(topic.percentage_of_tagged_papers)}
-                  </strong>
-                </li>
-              ))}
-            </ul>
-          </Card>
-
-          <Card
-            description="30-day movement"
-            eyebrow="Connected list"
-            icon={<ChartColumnIncreasing size={18} />}
-            title="Topic momentum"
-            tone="info"
-          >
-            <ul className="overview-list">
-              {leadingTopicGrowth.map((topic) => (
-                <li key={topic.topic_id}>
-                  <span>{topic.topic_name}</span>
-                  <strong>
-                    {topic.growth_status} · {signedNumber(topic.absolute_growth)}
-                  </strong>
-                </li>
-              ))}
-            </ul>
-          </Card>
-
-          <Card
-            description="Signal summary"
-            eyebrow="Connected summary"
-            icon={<Lightbulb size={18} />}
-            title="Emerging signals"
-            tone="success"
-          >
-            <div className="overview-data-stack">
-              <p>
-                Topics with active growth windows:{" "}
-                <strong>{formatNumber(data.topic_growth.length)}</strong>
-              </p>
-              <p>
-                Highest 30-day change:{" "}
-                <strong>{formatGrowthSignal(leadingTopicGrowth[0])}</strong>
-              </p>
-              <p>New insights can now be layered on top of the connected topic datasets.</p>
-            </div>
+            <TopicDistributionChart data={topicDistribution} />
           </Card>
         </ResponsiveGrid>
       </PageSection>
 
       <PageSection
-        description="Category mix and author leaders are now driven by the overview payload."
-        eyebrow="Navigation preview"
-        title="Category and Author Preview"
+        description="Author rankings stay focused on the most active contributors in the current warehouse snapshot."
+        eyebrow="Leaders"
+        title="Top Authors"
       >
         <ResponsiveGrid variant="standard">
-          <Card
-            description="Primary category leaders"
-            eyebrow="Connected list"
-            icon={<FileStack size={18} />}
-            title="Primary categories"
-            tone="warning"
-          >
-            <ul className="overview-list">
-              {leadingCategories.map((category) => (
-                <li key={category.category_code}>
-                  <span>{category.category_code}</span>
-                  <strong>
-                    {formatNumber(category.paper_count)} ·{" "}
-                    {formatPercent(category.percentage_of_primary_categorized_papers)}
-                  </strong>
-                </li>
-              ))}
-            </ul>
-          </Card>
-
           <Card
             description="Top author rankings"
             eyebrow="Connected list"
@@ -349,14 +248,21 @@ export function OverviewPage() {
             title="Top authors"
             tone="success"
           >
-            <ul className="overview-list">
-              {leadingAuthors.map((author) => (
-                <li key={author.author_id}>
-                  <span>{author.author_name}</span>
-                  <strong>{formatNumber(author.paper_count)} papers</strong>
-                </li>
-              ))}
-            </ul>
+            {leadingAuthors.length > 0 ? (
+              <ul className="overview-list">
+                {leadingAuthors.map((author) => (
+                  <li key={author.author_id}>
+                    <span>{author.author_name ?? "--"}</span>
+                    <strong>{formatNumber(author.paper_count ?? 0)} papers</strong>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <EmptyState
+                description="Author rankings will appear here once author activity data is available."
+                title="No authors found"
+              />
+            )}
           </Card>
         </ResponsiveGrid>
       </PageSection>
@@ -374,19 +280,26 @@ export function OverviewPage() {
             title="Recent paper feed"
             tone="accent"
           >
-            <ul className="overview-paper-list">
-              {latestPapers.map((paper) => (
-                <li key={paper.paper_id}>
-                  <div>
-                    <strong>{paper.title}</strong>
-                    <span>
-                      {paper.primary_category ?? "Uncategorized"} · {formatDate(paper.published_date)}
-                    </span>
-                  </div>
-                  <p>{summarizePaper(paper)}</p>
-                </li>
-              ))}
-            </ul>
+            {recentPapers.length > 0 ? (
+              <ul className="overview-paper-list">
+                {recentPapers.map((paper) => (
+                  <li key={paper.paper_id}>
+                    <div>
+                      <strong>{paper.title ?? "Untitled paper"}</strong>
+                      <span>
+                        {paper.primary_category ?? "Uncategorized"} · {formatDate(paper.published_date)}
+                      </span>
+                    </div>
+                    <p>{summarizePaper(paper)}</p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <EmptyState
+                description="Recent papers will appear here once the backend feed returns results."
+                title="No recent papers available"
+              />
+            )}
           </Card>
         </ResponsiveGrid>
       </PageSection>
@@ -394,31 +307,35 @@ export function OverviewPage() {
   );
 }
 
-function buildTrendHeights(points: WeeklyTrendPoint[], maxBars: number): number[] {
+function buildHeroHeights(
+  points: Array<{ paper_count: number | null | undefined }>,
+  maxBars: number,
+): number[] {
   const selectedPoints = points.slice(-maxBars);
 
   if (selectedPoints.length === 0) {
     return Array.from({ length: maxBars }, () => 28);
   }
 
-  const maximumCount = Math.max(...selectedPoints.map((point) => point.paper_count), 1);
+  const maximumCount = Math.max(
+    ...selectedPoints.map((point) => point.paper_count ?? 0),
+    1,
+  );
 
-  return selectedPoints.map((point) => Math.max(24, Math.round((point.paper_count / maximumCount) * 100)));
-}
-
-function formatGrowthSignal(topic: TopicGrowthItem | undefined): string {
-  if (!topic) {
-    return "No growth data yet";
-  }
-
-  return `${topic.topic_name} (${topic.growth_status}, ${signedNumber(topic.absolute_growth)})`;
+  return selectedPoints.map((point) =>
+    Math.max(24, Math.round(((point.paper_count ?? 0) / maximumCount) * 100)),
+  );
 }
 
 function summarizePaper(paper: LatestPaperItem): string {
   const authorsLabel =
-    paper.authors.length > 0 ? paper.authors.slice(0, 2).join(", ") : "Author metadata pending";
+    (paper.authors?.length ?? 0) > 0
+      ? paper.authors.slice(0, 2).join(", ")
+      : "Author metadata pending";
   const topicsLabel =
-    paper.topics.length > 0 ? paper.topics.slice(0, 2).join(", ") : "Topic enrichment pending";
+    (paper.topics?.length ?? 0) > 0
+      ? paper.topics.slice(0, 2).join(", ")
+      : "Topic enrichment pending";
 
   return `${authorsLabel} · ${topicsLabel}`;
 }
@@ -439,25 +356,6 @@ function formatNumber(value: number | null | undefined): string {
   return new Intl.NumberFormat("en-US").format(value);
 }
 
-function formatDecimal(value: number | null | undefined): string {
-  if (value === null || value === undefined) {
-    return "0.00";
-  }
-
-  return new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
-}
-
-function formatPercent(value: number | null | undefined): string {
-  if (value === null || value === undefined) {
-    return "0%";
-  }
-
-  return `${formatDecimal(value)}%`;
-}
-
 function formatDate(value: string | null | undefined): string {
   if (!value) {
     return "No date";
@@ -468,8 +366,4 @@ function formatDate(value: string | null | undefined): string {
     day: "numeric",
     year: "numeric",
   }).format(new Date(value));
-}
-
-function signedNumber(value: number): string {
-  return value > 0 ? `+${formatNumber(value)}` : formatNumber(value);
 }

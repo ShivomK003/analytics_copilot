@@ -607,6 +607,34 @@ h3 {
   color: var(--color-text-primary);
 }
 
+.chart-shell {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.chart-frame {
+  width: 100%;
+  min-width: 0;
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(180deg, rgb(247 250 255 / 0.96), rgb(242 246 255 / 0.86));
+}
+
+.chart-frame-line {
+  height: 18rem;
+  padding: 0.25rem 0.5rem 0.25rem 0;
+}
+
+.chart-frame-bar {
+  height: 22rem;
+  padding: 0.25rem 0.5rem 0.25rem 0;
+}
+
+.chart-caption {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
 .overview-list,
 .overview-paper-list {
   display: grid;
@@ -1026,6 +1054,14 @@ h3 {
   .overview-paper-list li > p {
     max-width: none;
     text-align: left;
+  }
+
+  .chart-frame-line {
+    height: 16rem;
+  }
+
+  .chart-frame-bar {
+    height: 20rem;
   }
 }
 

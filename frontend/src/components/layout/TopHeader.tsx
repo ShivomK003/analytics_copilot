@@ -36,10 +36,11 @@ export function TopHeader({
       <div className="top-header-utility" aria-label="Future dashboard utility area">
         <span className="status-pill">Data actions added in Phase C</span>
         <button
-          aria-label={onRefresh ? "Refresh overview data" : "Refresh data available on overview"}
+          aria-label="Refresh data"
           className={`icon-button${isRefreshing ? " is-refreshing" : ""}${!onRefresh ? " is-disabled" : ""}`}
-          disabled={!onRefresh}
+          disabled={!onRefresh || isRefreshing}
           onClick={onRefresh}
+          title="Refresh data"
           type="button"
         >
           <RefreshCw aria-hidden="true" size={16} />
