@@ -31,6 +31,22 @@ export type WeeklyTrendPoint = {
   paper_count: number;
 };
 
+export type MonthlyTrendPoint = {
+  month_start: string;
+  paper_count: number;
+};
+
+export type CumulativeTrendPoint = {
+  publication_date: string;
+  papers_published: number;
+  cumulative_papers: number;
+};
+
+export type TrendChartPoint = {
+  label: string;
+  value: number;
+};
+
 export type TopicDistributionItem = {
   topic_id: number;
   topic_name: string;

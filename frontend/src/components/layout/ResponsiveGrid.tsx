@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 type ResponsiveGridProps = {
   children: ReactNode;
-  variant?: "compact" | "standard" | "wide";
+  variant?: "compact" | "standard" | "wide" | "split";
 };
 
 export function ResponsiveGrid({
