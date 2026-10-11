@@ -1,3 +1,4 @@
+import csv
 import logging
 import tempfile
 import unittest
@@ -50,7 +51,16 @@ class IngestArxivResilienceTests(unittest.TestCase):
 
         with (
             self.assertLogs("etl", level="WARNING") as captured_logs,
-            patch("etl.extract.ingest_arxiv.feedparser.parse", return_value=SimpleNamespace(entries=[_build_entry()])),
+            patch("etl.extract.ingest_arxiv.feedparser.parse", 
+                  return_value=SimpleNamespace(
+                    bozo=False,
+                    feed={
+                        "opensearch_totalresults": "0",
+                        "opensearch_startindex": "0",
+                    },
+                    entries=[_build_entry()],
+                )
+            ),
             patch("etl.extract.ingest_arxiv.time.sleep") as sleep_mock,
         ):
             papers = ingest_arxiv.fetch_category("cs.AI", session=session)
@@ -62,8 +72,8 @@ class IngestArxivResilienceTests(unittest.TestCase):
             [call(ingest_arxiv.INITIAL_RETRY_DELAY_SECONDS), call(ingest_arxiv.INITIAL_RETRY_DELAY_SECONDS * 2)],
         )
         self.assertEqual(session.get.call_count, 3)
-        self.assertIn("Retry 1/3 for category cs.AI due to timeout", "\n".join(captured_logs.output))
-        self.assertIn("Retry 2/3 for category cs.AI due to timeout", "\n".join(captured_logs.output))
+        self.assertIn("Retry 1/3 for category cs.AI due to connection error", "\n".join(captured_logs.output))
+        self.assertIn("Retry 2/3 for category cs.AI due to connection error", "\n".join(captured_logs.output))
 
     def test_fetch_category_skips_after_retry_exhaustion(self) -> None:
         session = MagicMock()
@@ -86,18 +96,16 @@ class IngestArxivResilienceTests(unittest.TestCase):
             ],
         )
         log_text = "\n".join(captured_logs.output)
-        self.assertIn("Retry 1/3 for category cs.LG due to timeout", log_text)
-        self.assertIn("Retry 2/3 for category cs.LG due to timeout", log_text)
-        self.assertIn("Retry 3/3 for category cs.LG due to timeout", log_text)
-        self.assertIn("Skipping category cs.LG after 3 failed attempts", log_text)
+        self.assertIn("Retry 1/3 for category cs.LG due to connection error", log_text)
+        self.assertIn("Retry 2/3 for category cs.LG due to connection error", log_text)
+        self.assertIn("Retry 3/3 for category cs.LG due to connection error", log_text)
+        self.assertIn("Skipping category cs.LG after 4 failed attempts", log_text)
 
-    def test_extract_arxiv_data_continues_when_category_fails(self) -> None:
-        def fake_fetch_category(category: str, logger: logging.Logger | None = None, session=None, timeout=30):
+    def test_extract_arxiv_data_aborts_when_category_fails(self) -> None:
+        def fake_fetch_category_backfill(category: str, **kwargs):
             if category == "cs.AI":
-                ingest_arxiv.fetch_category.last_request_succeeded = False
-                return []
+                raise RuntimeError("Simulated arXiv extraction failure")
 
-            ingest_arxiv.fetch_category.last_request_succeeded = True
             return [
                 {
                     "paper_id": "1234.5678",
@@ -115,25 +123,65 @@ class IngestArxivResilienceTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as temp_dir:
             output_path = Path(temp_dir) / "arxiv_papers_raw.csv"
-            session = _SessionContext()
+
             with (
                 patch("etl.extract.ingest_arxiv.OUTPUT_PATH", output_path),
-                patch("etl.extract.ingest_arxiv.requests.Session", return_value=session),
-                patch("etl.extract.ingest_arxiv.fetch_category", side_effect=fake_fetch_category),
+                patch(
+                    "etl.extract.ingest_arxiv.fetch_category_backfill",
+                    side_effect=fake_fetch_category_backfill,
+                ) as fetch,
+                patch("etl.extract.ingest_arxiv.REQUEST_DELAY_SECONDS", 0),
+                self.assertRaisesRegex(
+                    RuntimeError,
+                    "Daily extraction incomplete: 1/2 categories failed",
+                ),
+            ):
+                ingest_arxiv.extract_arxiv_data(
+                    categories=["cs.AI", "cs.CL"]
+                )
+
+            # Both categories should still have been attempted
+            self.assertEqual(fetch.call_count, 2)
+
+            # Partial extraction results must never be published
+            self.assertFalse(output_path.exists())
+
+    def test_daily_extraction_deduplicates_categories(self) -> None:
+        paper = {
+            "paper_id": "2609.00001",
+            "title": "Test Paper",
+            "abstract": "Test abstract",
+            "authors": "Test Author",
+            "primary_category": "cs.AI",
+            "all_categories": "cs.AI, cs.LG",
+            "published_date": "2026-09-15T10:00:00Z",
+            "updated_date": "2026-09-15T10:00:00Z",
+            "pdf_url": "https://arxiv.org/pdf/2609.00001",
+            "arxiv_url": "https://arxiv.org/abs/2609.00001",
+        }
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output_path = Path(temp_dir) / "arxiv_papers_raw.csv"
+
+            with (
+                patch("etl.extract.ingest_arxiv.OUTPUT_PATH", output_path),
+                patch(
+                    "etl.extract.ingest_arxiv.fetch_category_backfill",
+                    return_value=[paper],
+                ) as fetch,
                 patch("etl.extract.ingest_arxiv.REQUEST_DELAY_SECONDS", 0),
             ):
-                metrics = ingest_arxiv.extract_arxiv_data(categories=["cs.AI", "cs.CL"])
+                metrics = ingest_arxiv.extract_arxiv_data(
+                    categories=["cs.AI", "cs.LG"]
+                )
 
-        self.assertEqual(
-            metrics,
-            {
-                "papers_fetched": 1,
-                "categories_attempted": 2,
-                "categories_succeeded": 1,
-                "categories_failed": 1,
-            },
-        )
-        self.assertTrue(output_path.exists())
-        csv_text = output_path.read_text(encoding="utf-8")
-        self.assertIn("paper_id,title,abstract,authors,primary_category,all_categories", csv_text)
-        self.assertIn("1234.5678,Recovered paper,Recovered abstract,Author One,cs.CL,cs.CL", csv_text)
+            self.assertEqual(fetch.call_count, 2)
+            self.assertEqual(metrics["papers_fetched"], 1)
+            self.assertEqual(metrics["categories_succeeded"], 2)
+            self.assertEqual(metrics["categories_failed"], 0)
+
+            with output_path.open(encoding="utf-8") as handle:
+                rows = list(csv.DictReader(handle))
+
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0]["paper_id"], "2609.00001")

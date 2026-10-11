@@ -4,3 +4,10 @@ logs/*.log
 __pycache__/
 *.pyc
 .env
+
+# Generated ETL data
+data/raw/
+data/clean/
+data/warehouse/
+data/reports/
+data/backfill/

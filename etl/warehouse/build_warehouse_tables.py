@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 
 import pandas as pd
 
@@ -38,9 +39,17 @@ def _assert_foreign_keys(
         raise ValueError(f"{label} contains IDs missing from {dimension_key}")
 
 
-def build_warehouse_tables(logger: logging.Logger | None = None) -> dict[str, int]:
+def build_warehouse_tables(
+    logger: logging.Logger | None = None,
+    input_path: Path | None = None,
+    output_dir: Path | None = None,
+) -> dict[str, int]:
     active_logger = logger or logging.getLogger("etl")
-    df = pd.read_csv(CLEAN_PATH)
+
+    input_path = Path(input_path) if input_path is not None else CLEAN_PATH
+    output_dir = Path(output_dir) if output_dir is not None else WAREHOUSE_DIR
+
+    df = pd.read_csv(input_path)
 
     fact_papers = df[
         [
@@ -129,24 +138,25 @@ def build_warehouse_tables(logger: logging.Logger | None = None) -> dict[str, in
     )
     _assert_foreign_keys(paper_topics, fact_papers, dim_topic, "topic_id", "paper_topics")
 
-    fact_papers.to_csv(WAREHOUSE_DIR / "fact_papers.csv", index=False)
-    dim_author.to_csv(WAREHOUSE_DIR / "dim_author.csv", index=False)
-    dim_category.to_csv(WAREHOUSE_DIR / "dim_category.csv", index=False)
-    dim_topic.to_csv(WAREHOUSE_DIR / "dim_topic.csv", index=False)
-    paper_authors.to_csv(WAREHOUSE_DIR / "paper_authors.csv", index=False)
-    paper_categories.to_csv(WAREHOUSE_DIR / "paper_categories.csv", index=False)
-    paper_topics.to_csv(WAREHOUSE_DIR / "paper_topics.csv", index=False)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    fact_papers.to_csv(output_dir / "fact_papers.csv", index=False)
+    dim_author.to_csv(output_dir / "dim_author.csv", index=False)
+    dim_category.to_csv(output_dir / "dim_category.csv", index=False)
+    dim_topic.to_csv(output_dir / "dim_topic.csv", index=False)
+    paper_authors.to_csv(output_dir / "paper_authors.csv", index=False)
+    paper_categories.to_csv(output_dir / "paper_categories.csv", index=False)
+    paper_topics.to_csv(output_dir / "paper_topics.csv", index=False)
 
     metrics = {
-        "fact_papers": int(len(fact_papers)),
-        "dim_author": int(len(dim_author)),
-        "dim_category": int(len(dim_category)),
-        "dim_topic": int(len(dim_topic)),
-        "paper_authors": int(len(paper_authors)),
-        "paper_categories": int(len(paper_categories)),
-        "paper_topics": int(len(paper_topics)),
+        "fact_papers": len(fact_papers),
+        "dim_author": len(dim_author),
+        "dim_category": len(dim_category),
+        "dim_topic": len(dim_topic),
+        "paper_authors": len(paper_authors),
+        "paper_categories": len(paper_categories),
+        "paper_topics": len(paper_topics),
     }
-    active_logger.info("Saved warehouse CSVs to %s", WAREHOUSE_DIR)
+    active_logger.info("Saved warehouse CSVs to %s", output_dir)
     return metrics
 
 

@@ -1,3 +1,4 @@
+import argparse
 from time import perf_counter
 
 from etl.config import ensure_directories, validate_environment
@@ -10,16 +11,24 @@ from etl.validate.validate_arxiv import validate_arxiv_data
 from etl.warehouse.build_warehouse_tables import build_warehouse_tables
 
 
-def run_pipeline() -> dict[str, object]:
+def run_pipeline(dry_run: bool = False) -> dict[str, object]:
     ensure_directories()
-    validate_environment()
+
+    if not dry_run:
+        validate_environment()
+
     logger = setup_logging()
-    logger.info("ETL pipeline started")
+    logger.info("ETL pipeline started (dry_run=%s)", dry_run)
 
     started_at = perf_counter()
-    metadata_conn = get_conn()
-    run_id = start_etl_run(metadata_conn)
-    logger.info("ETL run ID: %s", run_id)
+
+    metadata_conn = None
+    run_id = None
+
+    if not dry_run:
+        metadata_conn = get_conn()
+        run_id = start_etl_run(metadata_conn)
+        logger.info("ETL run ID: %s", run_id)
 
     papers_fetched = 0
     new_papers_loaded = 0
@@ -42,6 +51,13 @@ def run_pipeline() -> dict[str, object]:
             categories_failed,
         )
 
+        if categories_failed > 0:
+            raise RuntimeError(
+                f"arXiv extraction incomplete: "
+                f"{categories_failed}/{categories_attempted} categories failed. "
+                f"Aborting ETL pipeline."
+            )
+
         transform_metrics = transform_arxiv_data(logger=logger)
         logger.info(
             "Papers after transformation: %s, duplicates removed: %s",
@@ -60,6 +76,26 @@ def run_pipeline() -> dict[str, object]:
 
         warehouse_metrics = build_warehouse_tables(logger=logger)
         logger.info("Warehouse row counts: %s", warehouse_metrics)
+
+        if dry_run:
+            duration_seconds = round(perf_counter() - started_at, 2)
+            logger.info(
+                "Dry run completed successfully in %s seconds. "
+                "No Supabase data was modified.",
+                duration_seconds,
+            )
+
+            return {
+                "run_id": None,
+                "dry_run": True,
+                "papers_fetched": papers_fetched,
+                "categories_attempted": categories_attempted,
+                "categories_succeeded": categories_succeeded,
+                "categories_failed": categories_failed,
+                "new_papers_loaded": 0,
+                "duplicates_skipped": 0,
+                "duration_seconds": duration_seconds,
+            }
 
         load_metrics = load_to_supabase(logger=logger)
         new_papers_loaded = int(load_metrics["new_papers_loaded"])
@@ -102,23 +138,33 @@ def run_pipeline() -> dict[str, object]:
             duration_seconds,
             exc,
         )
-        finish_etl_run(
-            metadata_conn,
-            run_id,
-            papers_fetched,
-            new_papers_loaded,
-            duplicates_skipped,
-            "FAILED",
-            duration_seconds,
-            error_message=str(exc),
-        )
+        if metadata_conn is not None and run_id is not None:
+            finish_etl_run(
+                metadata_conn,
+                run_id,
+                papers_fetched,
+                new_papers_loaded,
+                duplicates_skipped,
+                "FAILED",
+                duration_seconds,
+                error_message=str(exc),
+            )
         raise
     finally:
-        metadata_conn.close()
+        if metadata_conn is not None:
+            metadata_conn.close()
 
 
 def main() -> None:
-    run_pipeline()
+    parser = argparse.ArgumentParser(description="Run the arXiv ETL pipeline")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Run extraction, transformation, validation, and warehouse generation without Supabase writes",
+    )
+    args = parser.parse_args()
+
+    run_pipeline(dry_run=args.dry_run)
 
 
 if __name__ == "__main__":

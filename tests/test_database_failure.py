@@ -7,11 +7,17 @@ from etl.load.load_supabase import load_to_supabase
 
 
 class _FakeCursor:
+    def __init__(self):
+        self.executed_queries = []
+
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc, tb):
         return False
+
+    def execute(self, query, params=None):
+        self.executed_queries.append(query)
 
 
 class _FakeConnection:
@@ -31,6 +37,7 @@ class _FakeConnection:
 
     def close(self) -> None:
         self.close_called = True
+
 
 
 class DatabaseFailureTests(unittest.TestCase):

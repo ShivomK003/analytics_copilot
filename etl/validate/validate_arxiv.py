@@ -1,5 +1,6 @@
 import json
 import logging
+from pathlib import Path
 
 import pandas as pd
 
@@ -21,11 +22,21 @@ def is_empty(value: object) -> bool:
     return pd.isna(value) or str(value).strip() in {"", "[]"}
 
 
-def validate_arxiv_data(logger: logging.Logger | None = None) -> dict[str, int | str]:
+def validate_arxiv_data(
+    logger: logging.Logger | None = None,
+    input_path: Path | None = None,
+    report_path: Path | None = None,
+) -> dict[str, int | str]:
     active_logger = logger or logging.getLogger("etl")
-    df = pd.read_csv(CLEAN_PATH)
+
+    input_path = Path(input_path) if input_path is not None else CLEAN_PATH
+    report_path = Path(report_path) if report_path is not None else REPORT_PATH
+
+    df = pd.read_csv(input_path)
+
     published_dates = pd.to_datetime(df["published_date"], errors="coerce", utc=True)
 
+    report_path.parent.mkdir(parents=True, exist_ok=True)
     report: dict[str, int | str] = {
         "papers_fetched": int(len(df)),
         "missing_paper_id": int(df["paper_id"].apply(is_empty).sum()),
@@ -40,10 +51,10 @@ def validate_arxiv_data(logger: logging.Logger | None = None) -> dict[str, int |
     has_failure = any(int(report[key]) > 0 for key in CRITICAL_KEYS)
     report["status"] = "FAIL" if has_failure else "PASS"
 
-    with open(REPORT_PATH, "w", encoding="utf-8") as handle:
+    with open(report_path, "w", encoding="utf-8") as handle:
         json.dump(report, handle, indent=2)
 
-    active_logger.info("Saved quality report to %s", REPORT_PATH)
+    active_logger.info("Saved quality report to %s", report_path)
     return report
 
 

@@ -1,5 +1,6 @@
 import logging
 import re
+from pathlib import Path
 
 import pandas as pd
 
@@ -74,9 +75,17 @@ def detect_topics(text: str) -> str:
     return ", ".join(found)
 
 
-def transform_arxiv_data(logger: logging.Logger | None = None) -> dict[str, int]:
+def transform_arxiv_data(
+    logger: logging.Logger | None = None,
+    input_path: Path | None = None,
+    output_path: Path | None = None,
+) -> dict[str, int]:
     active_logger = logger or logging.getLogger("etl")
-    df = pd.read_csv(RAW_PATH)
+
+    input_path = Path(input_path) if input_path is not None else RAW_PATH
+    output_path = Path(output_path) if output_path is not None else CLEAN_PATH
+
+    df = pd.read_csv(input_path)
 
     raw_papers = int(len(df))
 
@@ -109,14 +118,15 @@ def transform_arxiv_data(logger: logging.Logger | None = None) -> dict[str, int]
     df["updated_date"] = df["updated_date"].dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
     df = df[EXPECTED_COLUMNS]
-    df.to_csv(CLEAN_PATH, index=False)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(output_path, index=False)
 
     metrics = {
         "raw_papers": raw_papers,
         "clean_papers": int(len(df)),
         "duplicates_removed": duplicates_removed,
     }
-    active_logger.info("Saved clean arXiv data to %s", CLEAN_PATH)
+    active_logger.info("Saved clean arXiv data to %s", output_path)
     return metrics
 
 

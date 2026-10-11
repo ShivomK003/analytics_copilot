@@ -151,6 +151,11 @@ def load_to_supabase(logger: logging.Logger | None = None) -> dict[str, int]:
 
     conn = get_conn()
     try:
+        # Serialize ETL writers to prevent dimension ID collisions.
+        # Released automatically on commit or rollback.
+        with conn.cursor() as cur:
+            cur.execute("SELECT pg_advisory_xact_lock(739204);")
+
         existing_paper_ids = get_existing_paper_ids(conn)
         warehouse_paper_ids = set(fact_df["paper_id"].tolist())
         new_paper_ids = warehouse_paper_ids - existing_paper_ids
@@ -190,11 +195,9 @@ def load_to_supabase(logger: logging.Logger | None = None) -> dict[str, int]:
         )
         topic_mapping = _fetch_dimension_mapping(conn, "dim_topic", "topic_id", "topic_name")
 
-        filtered_authors = paper_authors_df[paper_authors_df["paper_id"].isin(new_paper_ids)].copy()
-        filtered_categories = paper_categories_df[
-            paper_categories_df["paper_id"].isin(new_paper_ids)
-        ].copy()
-        filtered_topics = paper_topics_df[paper_topics_df["paper_id"].isin(new_paper_ids)].copy()
+        filtered_authors = paper_authors_df.copy()
+        filtered_categories = paper_categories_df.copy()
+        filtered_topics = paper_topics_df.copy()
 
         _insert_bridge_rows(
             conn,
