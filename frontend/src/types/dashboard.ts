@@ -80,7 +80,7 @@ export type TopicGrowthStatus = "new" | "growing" | "declining" | "stable";
 export type PrimaryCategoryDistributionItem = {
   category_code: string;
   paper_count: number;
-  percentage_of_primary_categorized_papers: number | null;
+  percentage_of_primary_categorized_papers: string | number | null;
 };
 
 export type CategoryGrowthStatus = "new" | "growing" | "declining" | "stable";
@@ -88,12 +88,38 @@ export type CategoryGrowthStatus = "new" | "growing" | "declining" | "stable";
 export type CategoryGrowthItem = {
   category_id: number;
   category_code: string;
+  current_period_start: string;
+  current_period_end: string;
+  previous_period_start: string;
+  previous_period_end: string;
   current_30_day_count: number;
   previous_30_day_count: number;
   absolute_growth: number;
-  growth_percentage: number | null;
+  growth_percentage: string | number | null;
   growth_status: CategoryGrowthStatus;
 };
+
+export type CategoryDistributionItem = {
+  category_id: number;
+  category_code: string;
+  paper_count: number;
+  percentage_of_categorized_papers: string | number | null;
+};
+
+export type CategoryWeeklyItem = {
+  week_start: string;
+  category_id: number;
+  category_code: string;
+  paper_count: number;
+};
+
+export type CategoryTopicMatrixItem = {
+  category_id: number;
+  category_code: string;
+  topic_id: number;
+  topic_name: string;
+  shared_paper_count: number;
+};  
 
 export type TopAuthorItem = {
   author_id: number;
