@@ -1,7 +1,6 @@
 name: Daily ETL
 
 on:
-  Schedule temporarily disabled until controlled ETL testing is complete.
   schedule:
     - cron: "0 0 * * *"
 
