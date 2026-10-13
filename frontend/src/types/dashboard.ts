@@ -51,20 +51,31 @@ export type TopicDistributionItem = {
   topic_id: number;
   topic_name: string;
   paper_count: number;
-  percentage_of_tagged_papers: number | null;
+  percentage_of_tagged_papers: string | number | null;
 };
 
-export type TopicGrowthStatus = "new" | "growing" | "declining" | "stable";
+export type TopicWeeklyItem = {
+  week_start: string;
+  topic_id: number;
+  topic_name: string;
+  paper_count: number;
+};
 
 export type TopicGrowthItem = {
   topic_id: number;
   topic_name: string;
+  current_period_start: string;
+  current_period_end: string;
+  previous_period_start: string;
+  previous_period_end: string;
   current_30_day_count: number;
   previous_30_day_count: number;
   absolute_growth: number;
-  growth_percentage: number | null;
+  growth_percentage: string | number | null;
   growth_status: TopicGrowthStatus;
 };
+
+export type TopicGrowthStatus = "new" | "growing" | "declining" | "stable";
 
 export type PrimaryCategoryDistributionItem = {
   category_code: string;
