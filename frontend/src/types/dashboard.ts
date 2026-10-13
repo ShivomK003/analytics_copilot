@@ -121,6 +121,44 @@ export type CategoryTopicMatrixItem = {
   shared_paper_count: number;
 };  
 
+export type AuthorSearchItem = TopAuthorItem & {
+  matching_topic_paper_count: number | null;
+};
+
+export type AuthorTopicItem = {
+  author_id: number;
+  author_name: string;
+  topic_id: number;
+  topic_name: string;
+  paper_count: number;
+};
+
+export type AuthorPaperItem = {
+  paper_id: string;
+  title: string;
+  abstract: string | null;
+  primary_category: string | null;
+  published_date: string | null;
+  updated_date: string | null;
+  arxiv_url: string | null;
+  pdf_url: string | null;
+  topics: string[];
+};
+
+export type AuthorSearchParams = {
+  query?: string;
+  topic?: string;
+  limit?: number;
+  offset?: number;
+};
+
+export type AuthorPapersParams = {
+  authorId: number;
+  topic?: string;
+  limit?: number;
+  offset?: number;
+};
+
 export type TopAuthorItem = {
   author_id: number;
   author_name: string;
