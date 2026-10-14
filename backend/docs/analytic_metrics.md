@@ -135,3 +135,51 @@ work and are not canonicalized by these APIs.
 
 See [Research Intelligence API](research_intelligence_api.md) for contracts,
 filtering conventions, metadata limitations, baseline observations and tests.
+
+## Research Momentum and Momentum Matrix (Phase 1B)
+
+`GET /intelligence/momentum` returns zero-filled distinct stored-paper-ID counts
+per selected topic and Monday UTC calendar week. Inclusive reporting dates clip
+boundary weeks; partial weeks are flagged or excluded without rescaling. Missing
+reporting sides resolve from observed corpus bounds; at most 104 intersecting
+calendar weeks are permitted.
+
+Optional indices equal `100 * weekly_count / first_full_week_count`. A first full
+week with zero count produces null indices without selecting a later baseline;
+no full week produces no baseline. Raw counts always remain available.
+
+`GET /intelligence/momentum-matrix` compares adjacent, non-overlapping windows of
+2–12 complete UTC weeks each. The end is the last eligible Monday at or before
+the earlier of the reporting exclusive end and current UTC time. Both windows
+must fit inside the selected interval. Growth equals percentage change against
+the previous count; zero previous counts produce `no_baseline` and null percentage.
+Previous counts below 10 are flagged by a product heuristic, not a significance
+test. Reporting-period counts and date-independent lifetime counts are separate.
+
+These metrics describe indexed publication activity. Topic overlap, versioned
+paper IDs and unknown historical ingestion coverage remain applicable. Calendar
+completeness does not verify source completeness, and volumes do not measure
+citation impact. Full contracts are in [Research Intelligence API](research_intelligence_api.md).
+
+## Topic Relationships and Topic–Category Heatmap (Phase 1C)
+
+`GET /intelligence/relationships` returns selected-topic nodes with full
+date-filtered distinct stored-paper counts and canonical unordered co-occurrence
+edges. Shared count C(A,B) is the intersection of topic paper sets. Jaccard is
+`C(A,B) / (N(A) + N(B) - C(A,B))`, rounded to six decimal places as a fraction.
+The minimum shared-paper threshold affects only edges; node counts and unions
+remain unchanged. Co-occurrence is association, not evidence of temporal convergence.
+
+`GET /intelligence/topic-category-heatmap` supports all bridge categories or
+exactly mapped primary categories. Cell N(T,C) counts distinct date-filtered paper
+IDs. Category prevalence is `100 * N(T,C) / N(C)`; category denominator N(C)
+includes untagged and unselected-topic papers. Topic distribution is
+`100 * N(T,C) / N(T)`; topic denominator N(T) is independent of category scope.
+Percentages round to six decimal places; zero denominators produce null.
+
+Selected topics and all active categories form a complete zero-filled cell grid.
+Multiple memberships mean cell totals are not distinct corpus totals. All-category
+topic distributions may sum above 100%; primary distributions approach 100% only
+with complete valid mappings. Missing date sides remain unbounded. Historical
+coverage remains unknown, and versioned stored IDs and noisy keyword labels remain
+limitations. See [Research Intelligence API](research_intelligence_api.md).
