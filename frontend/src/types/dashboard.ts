@@ -205,3 +205,50 @@ export type DashboardHomeResponse = {
   author_statistics: AuthorStatistics;
   latest_papers: LatestPaperItem[];
 };
+
+
+export type PaperSearchParams = {
+  query?: string;
+  topic?: string;
+  category?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  sort?: "newest" | "oldest" | "relevance";
+  limit?: number;
+  offset?: number;
+};
+
+export type PaperSearchItem = {
+  paper_id: string;
+  title: string;
+  abstract: string | null;
+  primary_category: string | null;
+  published_date: string | null;
+  updated_date: string | null;
+  arxiv_url: string | null;
+  pdf_url: string | null;
+  topics: string[];
+};
+
+export type PaperDetail = PaperSearchItem & {
+  year: number | null;
+  month: number | null;
+  week: number | null;
+  categories: string[];
+};
+
+export type PaperAuthor = {
+  author_id: number;
+  author_name: string;
+};
+
+export type RelatedPaper = {
+  paper_id: string;
+  title: string;
+  abstract: string | null;
+  primary_category: string | null;
+  published_date: string | null;
+  arxiv_url: string | null;
+  pdf_url: string | null;
+  shared_topic_count: number;
+};

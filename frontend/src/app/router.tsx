@@ -8,6 +8,7 @@ import { PapersPage } from "../pages/PapersPage";
 import { TopicsPage } from "../pages/TopicsPage";
 import { TrendsPage } from "../pages/TrendsPage";
 import { AuthorProfilePage } from "../pages/AuthorProfilePage";
+import { PaperProfilePage } from "../pages/PaperProfilePage";
 
 export const router = createBrowserRouter([
   {
@@ -22,6 +23,7 @@ export const router = createBrowserRouter([
       { path: "authors", element: <AuthorsPage /> },
       { path: "authors/:authorId", element: <AuthorProfilePage /> },
       { path: "papers", element: <PapersPage /> },
+      { path: "papers/:paperId", element: <PaperProfilePage /> },
       { path: "*", element: <NotFoundPage /> },
     ],
   },
