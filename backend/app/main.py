@@ -1,7 +1,7 @@
 """FastAPI application entry point."""
 
-from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,6 +12,7 @@ from app.routes.categories import router as categories_router
 from app.routes.dashboard import router as dashboard_router
 from app.routes.health import router as health_router
 from app.routes.metrics import router as metrics_router
+from app.routes.papers import router as paper_router
 from app.routes.topics import router as topics_router
 from app.routes.trends import router as trends_router
 
@@ -51,6 +52,7 @@ app.include_router(topics_router)
 app.include_router(categories_router)
 app.include_router(authors_router)
 app.include_router(dashboard_router)
+app.include_router(paper_router)
 
 
 @app.get("/")
