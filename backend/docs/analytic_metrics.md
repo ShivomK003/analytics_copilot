@@ -115,3 +115,23 @@ Optional query parameters:
 
 - `latest_paper_limit`: 1–100, default 10
 - `author_limit`: 1–100, default 10
+
+## Research Intelligence Foundation (Phase 1A)
+
+`GET /intelligence/coverage` reports lifetime stored-paper-ID counts, dated/undated
+and tagged/untagged partitions, configured topic count, UTC observed publication
+bounds, and optional latest successful ETL completion time.
+
+`GET /intelligence/topics` reports every configured topic's distinct-paper count
+for an optional inclusive UTC date interval and its independent lifetime count.
+Period counts exclude undated papers even for unbounded requests; lifetime
+counts include them. Topic assignments overlap, so summed topic counts are not
+an exclusive composition or a distinct corpus total.
+
+Coverage remains `unknown`: observed dates and successful execution do not verify
+historical completeness. Publication metrics use published timestamps, not update
+timestamps. Stored IDs may include versioned revisions of the same underlying
+work and are not canonicalized by these APIs.
+
+See [Research Intelligence API](research_intelligence_api.md) for contracts,
+filtering conventions, metadata limitations, baseline observations and tests.
