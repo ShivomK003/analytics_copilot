@@ -183,3 +183,19 @@ topic distributions may sum above 100%; primary distributions approach 100% only
 with complete valid mappings. Missing date sides remain unbounded. Historical
 coverage remains unknown, and versioned stored IDs and noisy keyword labels remain
 limitations. See [Research Intelligence API](research_intelligence_api.md).
+
+## Weekly Composition and Unified Evidence (Phase 1D)
+
+`GET /intelligence/composition` returns distinct weekly topic numerators divided
+by all dated papers in the same effective UTC cohort, including untagged papers.
+Percentages overlap and are not normalized to sum to 100%. Zero cohort counts
+produce null prevalence; zero topic matches within populated cohorts produce 0.0.
+Momentum's shared calendar, clipping and 104-week limit apply unchanged.
+
+`GET /intelligence/evidence` reproduces dated analytics cohorts with no topic,
+one topic, or two-topic intersection, plus all/primary category filters. Duplicate
+evidence topic IDs are invalid. Deterministic pagination follows unique fact IDs;
+existing `vw_paper_details` supplies author names and publication fields. Count and
+records share one SQL snapshot. For chart half-open UTC intervals, the inclusive
+`date_to` is the exclusive end date minus one day. See the API documentation for
+exact contracts and chart-to-evidence mappings.

@@ -12,6 +12,8 @@ from app.schemas.intelligence import (
     MomentumMatrixResponse,
     RelationshipsResponse,
     TopicCategoryHeatmapResponse,
+    CompositionResponse,
+    EvidenceResponse,
 )
 from app.services.intelligence_service import (
     AnalyticalWindowError,
@@ -21,8 +23,15 @@ from app.services.intelligence_service import (
     get_momentum_matrix,
     get_relationships,
     get_topic_category_heatmap,
+    get_composition,
+    get_evidence,
 )
-from app.services.research_filters import analytical_date_range, analytical_topic_ids
+from app.services.research_filters import (
+    analytical_date_range,
+    analytical_topic_ids,
+    evidence_topic_ids,
+    evidence_category,
+)
 
 router = APIRouter(prefix="/intelligence", tags=["Research Intelligence"])
 
@@ -113,4 +122,39 @@ def topic_category_heatmap(
     except Exception as exc:
         raise HTTPException(
             status_code=500, detail="Unable to retrieve topic-category heatmap."
+        ) from exc
+
+
+@router.get("/composition", response_model=CompositionResponse)
+def composition(
+    dates: Annotated[tuple[date | None, date | None], Depends(analytical_date_range)],
+    topic_ids: Annotated[list[int], Depends(analytical_topic_ids)],
+    include_partial_weeks: bool = True,
+) -> CompositionResponse:
+    """Return overlapping weekly prevalence; invalid reporting intervals yield 422."""
+    try:
+        return get_composition(*dates, topic_ids, include_partial_weeks)
+    except AnalyticalWindowError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500, detail="Unable to retrieve research composition."
+        ) from exc
+
+
+@router.get("/evidence", response_model=EvidenceResponse)
+def evidence(
+    dates: Annotated[tuple[date | None, date | None], Depends(analytical_date_range)],
+    topic_ids: Annotated[list[int], Depends(evidence_topic_ids)],
+    category: Annotated[str | None, Depends(evidence_category)],
+    category_scope: Literal["all", "primary"] = "all",
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0, le=9223372036854775807)] = 0,
+) -> EvidenceResponse:
+    """Return a bounded evidence page; topics are conjunctive and categories use exact scope."""
+    try:
+        return get_evidence(*dates, topic_ids, category, category_scope, limit, offset)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500, detail="Unable to retrieve research evidence."
         ) from exc

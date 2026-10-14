@@ -120,3 +120,45 @@ def analytical_topic_ids(
         return validate_topic_ids(topic_id)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+def evidence_topic_ids(
+    topic_id: list[int] | None = Query(default=None),
+) -> list[int]:
+    """Validate zero, one or two distinct topic IDs; duplicates are evidence input errors.
+
+    Unlike chart selection, repeats must not silently collapse an intended pair.
+    Existing normalization/existence checks remain the source of topic validity.
+    """
+    values = topic_id or []
+    if len(values) > 2:
+        raise HTTPException(status_code=422, detail="Evidence accepts at most two topic IDs.")
+    if len(values) != len(set(values)):
+        raise HTTPException(status_code=422, detail="Evidence topic IDs must be distinct.")
+    try:
+        return validate_topic_ids(values)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Unable to validate evidence topics.") from exc
+
+
+def evidence_category(
+    category: str | None = Query(default=None, min_length=1, max_length=50),
+) -> str | None:
+    """Resolve a known category to its stored code; blank/unknown/ambiguous codes yield 422."""
+    if category is None:
+        return None
+    code = category.strip()
+    if not code:
+        raise HTTPException(status_code=422, detail="Category cannot be blank.")
+    try:
+        rows = fetch_all(
+            "select category_code from dim_category where lower(category_code) = lower(%s);",
+            (code,),
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Unable to validate evidence category.") from exc
+    if len(rows) != 1:
+        raise HTTPException(status_code=422, detail="Unknown or ambiguous category code.")
+    return rows[0]["category_code"]

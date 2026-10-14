@@ -27,6 +27,14 @@ from app.schemas.intelligence import (
     HeatmapCell,
     TopicCategoryHeatmapData,
     TopicCategoryHeatmapResponse,
+    CompositionData,
+    CompositionResponse,
+    CompositionTopic,
+    CompositionTopicCount,
+    CompositionWeek,
+    EvidenceData,
+    EvidenceRecord,
+    EvidenceResponse,
 )
 from app.services.research_filters import (
     publication_date_predicate,
@@ -260,6 +268,41 @@ def _comparison_windows(
     )
 
 
+def _weekly_calendar_bounds(
+    interval: ReportingInterval, label: str = "Momentum",
+) -> tuple[date | None, date | None]:
+    """Apply the shared 104 intersecting-week limit before generating a UTC calendar.
+
+    Missing empty-corpus sides remain unresolved; callers must not invent weeks.
+    The label is an internal diagnostic name, not a query value.
+    """
+    if interval.date_from is None or interval.date_to is None:
+        return None, None
+    first, last = _monday(interval.date_from), _monday(interval.date_to)
+    if (last - first).days // 7 + 1 > MAX_MOMENTUM_WEEKS:
+        raise AnalyticalWindowError(
+            f"{label} reporting intervals may intersect at most 104 UTC calendar weeks."
+        )
+    try:
+        last + timedelta(days=7)
+    except OverflowError as exc:
+        raise AnalyticalWindowError("Weekly calendar boundaries exceed supported dates.") from exc
+    return first, last
+
+
+def _weekly_bucket(week_start: date, lower: datetime, upper: datetime) -> dict:
+    """Return identical calendar/clipped boundaries for momentum and composition."""
+    week_end = week_start + timedelta(days=7)
+    week_lower, _ = utc_boundaries(week_start, None)
+    week_upper, _ = utc_boundaries(week_end, None)
+    effective_lower, effective_upper = max(lower, week_lower), min(upper, week_upper)
+    return dict(
+        week_start=week_start, week_end_exclusive=week_end,
+        effective_start=effective_lower, effective_end_exclusive=effective_upper,
+        is_partial_week=effective_lower != week_lower or effective_upper != week_upper,
+    )
+
+
 def get_momentum(
     date_from: date | None = None,
     date_to: date | None = None,
@@ -279,14 +322,7 @@ def get_momentum(
     row, interval, warnings = _reporting_context(date_from, date_to)
     selection = topic_ids or None
     series: dict[int, MomentumTopic] = {}
-    if interval.date_from is not None and interval.date_to is not None:
-        first, last = _monday(interval.date_from), _monday(interval.date_to)
-        if (last - first).days // 7 + 1 > MAX_MOMENTUM_WEEKS:
-            raise AnalyticalWindowError("Momentum reporting intervals may intersect at most 104 UTC calendar weeks.")
-        try:
-            last + timedelta(days=7)
-        except OverflowError as exc:
-            raise AnalyticalWindowError("Weekly calendar boundaries exceed supported dates.") from exc
+    first, last = _weekly_calendar_bounds(interval)
     if row["observed_date_from"] is None:
         # Without observations, preserve configured topics but invent no calendar.
         rows = fetch_all(
@@ -336,18 +372,11 @@ def get_momentum(
                 topic_id=item["topic_id"], topic_name=item["topic_name"],
                 baseline_week_start=None, baseline_count=None, points=[],
             ))
-            start = item["week_start"]
-            end = start + timedelta(days=7)
-            week_lower, _ = utc_boundaries(start, None)
-            week_upper, _ = utc_boundaries(end, None)
-            effective_lower, effective_upper = max(lower, week_lower), min(upper, week_upper)
-            partial = effective_lower != week_lower or effective_upper != week_upper
-            if partial and not include_partial_weeks:
+            bucket = _weekly_bucket(item["week_start"], lower, upper)
+            if bucket["is_partial_week"] and not include_partial_weeks:
                 continue
             topic.points.append(MomentumPoint(
-                week_start=start, week_end_exclusive=end,
-                effective_start=effective_lower, effective_end_exclusive=effective_upper,
-                paper_count=item["paper_count"], index_value=None, is_partial_week=partial,
+                **bucket, paper_count=item["paper_count"], index_value=None,
             ))
         if include_partial_weeks and any(p.is_partial_week for t in series.values() for p in t.points):
             warnings.append("Partial boundary weeks contain clipped counts and are not comparable to full-week volumes.")
@@ -643,5 +672,179 @@ def get_topic_category_heatmap(
         data=TopicCategoryHeatmapData(
             date_from=date_from, date_to=date_to, category_scope=category_scope,
             topics=topics, categories=categories, cells=cells,
+        ),
+    )
+
+
+def get_composition(
+    date_from: date | None = None,
+    date_to: date | None = None,
+    topic_ids: list[int] | None = None,
+    include_partial_weeks: bool = True,
+) -> CompositionResponse:
+    """Return weekly topic prevalence using all dated papers, including untagged papers.
+
+    Resolve missing sides and enforce the same finite calendar as momentum.
+    Numerators overlap and must not be normalized to sum to 100%. SQL failures
+    propagate; invalid reporting intervals raise AnalyticalWindowError.
+    """
+    bounds, interval, warnings = _reporting_context(date_from, date_to)
+    first, last = _weekly_calendar_bounds(interval, "Composition")
+    selection = topic_ids or None
+    weeks = []
+    if bounds["observed_date_from"] is None:
+        rows = fetch_all(
+            """select topic_id, topic_name from dim_topic
+               where (%s::numeric[] is null or topic_id = any(%s::numeric[]))
+               order by topic_name, topic_id;""", (selection, selection),
+        )
+        topics = [CompositionTopic(**topic) for topic in rows]
+    else:
+        predicate, params = publication_date_predicate(interval.date_from, interval.date_to)
+        row = fetch_one(
+            f"""
+            with selected_topics as (
+                select topic_id, topic_name from dim_topic
+                where (%s::numeric[] is null or topic_id = any(%s::numeric[]))
+            ), calendar as (
+                select generate_series(%s::date::timestamp, %s::date::timestamp,
+                                       interval '1 week')::date as week_start
+            ), filtered_papers as (
+                select p.paper_id, p.published_date from fact_papers p where {predicate}
+            ), weekly_totals as (
+                -- No topic join: untagged and unselected-topic papers belong in
+                -- the denominator. Date clipping occurs before weekly grouping.
+                select date_trunc('week', published_date at time zone 'UTC')::date as week_start,
+                       count(distinct paper_id) as total_papers
+                from filtered_papers group by 1
+            ), weekly_topics as (
+                select t.topic_id,
+                       date_trunc('week', p.published_date at time zone 'UTC')::date as week_start,
+                       count(distinct p.paper_id) as topic_papers
+                from filtered_papers p
+                join paper_topics pt on pt.paper_id = p.paper_id
+                join selected_topics t on t.topic_id = pt.topic_id
+                group by 1, 2
+            ), topic_grid as (
+                -- Zero-fill every selected topic/week; DISTINCT above protects
+                -- against repeated bridge fixtures and overlapping assignments.
+                select c.week_start, t.topic_id, t.topic_name,
+                       coalesce(w.topic_papers, 0) as topic_papers
+                from calendar c cross join selected_topics t
+                left join weekly_topics w on w.topic_id = t.topic_id and w.week_start = c.week_start
+            ), week_topics as (
+                select week_start,
+                       jsonb_agg(jsonb_build_object('topic_id', topic_id, 'topic_papers', topic_papers)
+                                 order by topic_name, topic_id) as topics
+                from topic_grid group by week_start
+            ), week_rows as (
+                -- Calendar survives even when no topics are configured.
+                select c.week_start, coalesce(w.total_papers, 0) as total_papers,
+                       coalesce(t.topics, '[]'::jsonb) as topics
+                from calendar c
+                left join weekly_totals w on w.week_start = c.week_start
+                left join week_topics t on t.week_start = c.week_start
+            )
+            select
+                coalesce((select jsonb_agg(to_jsonb(t) order by t.topic_name, t.topic_id)
+                          from selected_topics t), '[]'::jsonb) as topics,
+                coalesce((select jsonb_agg(to_jsonb(w) order by w.week_start)
+                          from week_rows w), '[]'::jsonb) as weeks;
+            """, (selection, selection, first, last, *params),
+        )
+        if row is None:
+            raise RuntimeError("Composition aggregation returned no row.")
+        topics = [CompositionTopic(**topic) for topic in row["topics"]]
+        lower, upper = utc_boundaries(interval.date_from, interval.date_to)
+        for week in row["weeks"]:
+            # jsonb calendar dates arrive as ISO strings, unlike cursor date columns.
+            bucket = _weekly_bucket(date.fromisoformat(week["week_start"]), lower, upper)
+            if bucket["is_partial_week"] and not include_partial_weeks:
+                continue
+            weeks.append(CompositionWeek(
+                **bucket, total_papers=week["total_papers"],
+                topics=[CompositionTopicCount(
+                    **topic, prevalence_pct=_association_ratio(topic["topic_papers"], week["total_papers"], 100),
+                ) for topic in week["topics"]],
+            ))
+        if any(week.is_partial_week for week in weeks):
+            warnings.append("Partial boundary weeks contain clipped cohorts; prevalence uses only papers inside their effective boundaries.")
+    warnings.append("Topic prevalence overlaps and may sum above 100%; denominators include untagged publications.")
+    return CompositionResponse(
+        meta=_metadata(bounds, date_from, date_to, warnings),
+        data=CompositionData(interval=interval, topics=topics, weeks=weeks),
+    )
+
+
+def get_evidence(
+    date_from: date | None = None,
+    date_to: date | None = None,
+    topic_ids: list[int] | None = None,
+    category: str | None = None,
+    category_scope: Literal["all", "primary"] = "all",
+    limit: int = 20,
+    offset: int = 0,
+) -> EvidenceResponse:
+    """Retrieve a counted, deterministic page of the analytics' dated paper cohort.
+
+    Topic IDs/categories are validated by route dependencies. Separate EXISTS
+    predicates implement two-topic intersection without row multiplication.
+    Reuse vw_paper_details for existing field/author aggregation after choosing
+    page IDs. Counts and records use one statement snapshot; SQL failures propagate.
+    """
+    predicate, params = publication_date_predicate(date_from, date_to)
+    conditions = [predicate]
+    for topic_id in topic_ids or []:
+        conditions.append("""
+            exists (select 1 from paper_topics pt
+                    where pt.paper_id = p.paper_id and pt.topic_id = %s)
+        """)
+        params.append(topic_id)
+    if category is not None:
+        if category_scope == "all":
+            conditions.append("""
+                exists (select 1 from paper_categories pc
+                        join dim_category c on c.category_id = pc.category_id
+                        where pc.paper_id = p.paper_id and c.category_code = %s)
+            """)
+        else:
+            conditions.append("p.primary_category = %s")
+        params.append(category)
+    row = fetch_one(
+        f"""
+        with bounds as (
+            select (min(published_date) at time zone 'UTC')::date as observed_date_from,
+                   (max(published_date) at time zone 'UTC')::date as observed_date_to,
+                   count(*) filter (where published_date is null) as undated_papers
+            from fact_papers
+        ), matching_papers as (
+            -- Grain: one fact row per stored ID. EXISTS never expands associations,
+            -- so deduplication precedes both the count and pagination by construction.
+            select p.paper_id, p.published_date from fact_papers p
+            where {' and '.join(conditions)}
+        ), page_ids as (
+            select paper_id, published_date from matching_papers
+            order by published_date desc, paper_id asc limit %s offset %s
+        ), records as (
+            -- The existing detail view aggregates each bridge separately. Reuse
+            -- its authors/fields rather than add another serializer or N+1 queries.
+            select p.paper_id, p.title, p.abstract, p.published_date, p.authors,
+                   p.primary_category, p.arxiv_url, p.pdf_url
+            from page_ids ids join vw_paper_details p on p.paper_id = ids.paper_id
+        )
+        select bounds.*, (select count(*) from matching_papers) as total,
+            coalesce((select jsonb_agg(to_jsonb(r) order by r.published_date desc, r.paper_id asc)
+                      from records r), '[]'::jsonb) as records
+        from bounds;
+        """, (*params, limit, offset),
+    )
+    if row is None:
+        raise RuntimeError("Evidence aggregation returned no row.")
+    records = [EvidenceRecord(**record) for record in row["records"]]
+    return EvidenceResponse(
+        meta=_metadata(row, date_from, date_to),
+        data=EvidenceData(
+            total=row["total"], limit=limit, offset=offset,
+            has_more=offset + len(records) < row["total"], records=records,
         ),
     )

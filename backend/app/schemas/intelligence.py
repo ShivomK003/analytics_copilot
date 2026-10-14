@@ -1,9 +1,9 @@
 """Research Intelligence foundation response contracts."""
 
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import Annotated, Literal
 
-from pydantic import AwareDatetime, BaseModel, Field, model_validator
+from pydantic import AwareDatetime, BaseModel, Field, field_validator, model_validator
 
 Count = Annotated[int, Field(ge=0)]
 
@@ -213,3 +213,81 @@ class TopicCategoryHeatmapResponse(BaseModel):
 
     meta: IntelligenceMetadata
     data: TopicCategoryHeatmapData
+
+
+class CompositionTopic(BaseModel):
+    """Configured topic dimension; weekly counts live in the corresponding observations."""
+
+    topic_id: Annotated[int, Field(gt=0)]
+    topic_name: str
+
+
+class CompositionTopicCount(BaseModel):
+    """Overlapping topic numerator divided by the entire dated weekly paper cohort."""
+
+    topic_id: Annotated[int, Field(gt=0)]
+    topic_papers: Count
+    prevalence_pct: Annotated[float, Field(ge=0, le=100)] | None
+
+
+class CompositionWeek(BaseModel):
+    """One zero-filled UTC week with explicit reporting-boundary clipping."""
+
+    week_start: date
+    week_end_exclusive: date
+    effective_start: AwareDatetime
+    effective_end_exclusive: AwareDatetime
+    is_partial_week: bool
+    total_papers: Count
+    topics: list[CompositionTopicCount]
+
+
+class CompositionData(BaseModel):
+    """Topic selection never changes weekly corpus denominators."""
+
+    interval: ReportingInterval
+    topics: list[CompositionTopic]
+    weeks: list[CompositionWeek]
+
+
+class CompositionResponse(BaseModel):
+    """Weekly Research Composition response envelope."""
+
+    meta: IntelligenceMetadata
+    data: CompositionData
+
+
+class EvidenceRecord(BaseModel):
+    """Existing paper-detail fields; authors are sorted names from vw_paper_details."""
+
+    paper_id: str
+    title: str
+    abstract: str | None
+    published_date: AwareDatetime
+    authors: list[str]
+    primary_category: str | None
+    arxiv_url: str | None
+    pdf_url: str | None
+
+    @field_validator("published_date")
+    @classmethod
+    def publication_timestamp_utc(cls, value: datetime) -> datetime:
+        """Serialize the same instant as UTC regardless of the database session timezone."""
+        return value.astimezone(timezone.utc)
+
+
+class EvidenceData(BaseModel):
+    """One deterministic page and its total from the same database snapshot."""
+
+    total: Count
+    limit: Annotated[int, Field(ge=1, le=100)]
+    offset: Annotated[int, Field(ge=0, le=9223372036854775807)]
+    has_more: bool
+    records: list[EvidenceRecord]
+
+
+class EvidenceResponse(BaseModel):
+    """Unified Evidence Retrieval response envelope."""
+
+    meta: IntelligenceMetadata
+    data: EvidenceData

@@ -1,10 +1,10 @@
-# Research Intelligence API — Phases 1A–1C
+# Research Intelligence API — Phases 1A–1D
 
 Phase 1A adds read-only corpus coverage and research topic options. Existing
 paper, author, dashboard, trend, topic and category APIs remain unchanged.
 Phase 1B adds weekly momentum and comparable-window momentum matrix datasets.
 Phase 1C adds topic relationships and topic–category heatmap datasets.
-Research Composition and evidence-filter enhancements remain unimplemented.
+Phase 1D adds weekly Research Composition and Unified Evidence Retrieval.
 
 ## Response conventions
 
@@ -17,7 +17,7 @@ models. Dates serialize as ISO `YYYY-MM-DD`; timestamps include a UTC offset
 | `date_from`, `date_to` | Requested inclusive dates; null means unbounded. Coverage has no date parameters, so both are null. |
 | `timezone` | Always `UTC`. |
 | `observed_date_from`, `observed_date_to` | Earliest/latest observed publication dates in the **whole indexed corpus**, independent of the selected topic-count interval. Null if no dated papers exist. |
-| `coverage_status` | Always `unknown` in Phases 1A–1C. No auditable completeness source is currently implemented. |
+| `coverage_status` | Always `unknown` in Phases 1A–1D. No auditable completeness source is currently implemented. |
 | `warnings` | Human-readable caveats about unverified history, automatic topic labels, undated publications, and unavailable ETL freshness where applicable. |
 
 Observed bounds do not prove continuous or complete ingestion between them.
@@ -588,3 +588,173 @@ The documented full-suite commands above include these tests.
 
 Stored arXiv revisions remain separate paper IDs. Keyword-based tags may be noisy;
 observed history and successful ETL execution do not verify historical completeness.
+
+## GET /intelligence/composition (Phase 1D)
+
+Weekly composition reports **overlapping topic prevalence**, not a mutually
+exclusive allocation of publications. It uses the same calendar/clipping helpers
+as momentum, preserving the existing momentum response contract.
+
+| Parameter | Default | Behavior |
+|---|---|---|
+| `date_from`, `date_to` | Observed bounds for omitted sides | Inclusive UTC ISO dates; finite reporting interval. |
+| Repeated `topic_id` | All configured topics | Standard validated, sorted/deduplicated chart selection. |
+| `include_partial_weeks` | `true` | Include clipped boundary weeks; false excludes them without rescaling. |
+
+Example:
+
+```text
+GET /intelligence/composition?date_from=2026-07-01&date_to=2026-07-31&topic_id=5&topic_id=3
+```
+
+Response uses the standard metadata envelope. Illustrative `data`:
+
+```json
+{
+  "interval": {"date_from": "2026-07-01", "date_to": "2026-07-31"},
+  "topics": [{"topic_id": 5, "topic_name": "agents"}],
+  "weeks": [{
+    "week_start": "2026-06-29",
+    "week_end_exclusive": "2026-07-06",
+    "effective_start": "2026-07-01T00:00:00Z",
+    "effective_end_exclusive": "2026-07-06T00:00:00Z",
+    "is_partial_week": true,
+    "total_papers": 100,
+    "topics": [{"topic_id": 5, "topic_papers": 25, "prevalence_pct": 25.0}]
+  }]
+}
+```
+
+Actual output includes every intersecting week and selected topic, in ascending
+week order and the established topic-name/ID order. No published history means
+no invented calendar, while configured topic options remain available. A corpus
+without configured topics still returns weekly total counts and empty topic arrays.
+
+For each effective week:
+
+- `total_papers`: distinct **all dated papers** in the clipped publication cohort,
+  including untagged papers and papers with only unselected topics.
+- `topic_papers`: distinct papers in that same cohort assigned to this topic.
+- `prevalence_pct = 100 * topic_papers / total_papers`, rounded to six decimal places.
+
+Topic selection does not change the denominator. Duplicate bridge pairs do not
+inflate numerators. When no papers exist in a generated week, counts are zero and
+prevalence is null. When papers exist but a topic has no matches, prevalence is 0.0.
+A paper may contribute to several topics, so percentages **may sum above 100%**;
+they are never normalized to an exclusive composition.
+
+The reporting interval may intersect at most 104 UTC Monday-based calendar weeks,
+including partial weeks. Excessive or unsupported intervals return 422, as for
+momentum. Partial weeks clip **both** numerator and denominator to effective
+boundaries. They are flagged, not rescaled to full-week volumes. A full calendar
+week still has unknown ingestion completeness. Metadata echoes requested dates;
+`data.interval` contains resolved dates.
+
+## GET /intelligence/evidence (Phase 1D)
+
+Returns publications supporting the analytics' **dated** paper populations.
+Undated publications are excluded even with no date parameters, consistently with
+all intelligence interval/count conventions. Existing Explorer APIs retain their
+separate discovery behavior.
+
+| Parameter | Default | Behavior |
+|---|---|---|
+| `date_from`, `date_to` | Unbounded | Inclusive UTC ISO dates, with exclusive next-day SQL upper bound. |
+| Repeated `topic_id` | No topic restriction | Zero, one or two positive known IDs. Two IDs mean **both topics**, not either. |
+| `category` | No category restriction | Known `dim_category.category_code`; trimmed and case-insensitively resolved to its stored code. Blank, unknown or ambiguous codes return 422. |
+| `category_scope` | `all` | `all` matches any bridge association; `primary` matches `fact_papers.primary_category` exactly. |
+| `limit` | `20` | Integer 1–100. |
+| `offset` | `0` | Integer 0–9223372036854775807 (PostgreSQL's representable OFFSET range). |
+
+More than two IDs or **duplicate evidence topic IDs** return 422. Evidence does not
+silently deduplicate a requested pair. Chart endpoints retain their existing
+selection normalization. Invalid scopes, dates, topic IDs or pagination values
+return 422. Database/validation-query failures return generic 500 responses and
+are not converted into valid empty evidence.
+
+Examples:
+
+```text
+GET /intelligence/evidence?topic_id=5&date_from=2026-07-06&date_to=2026-07-12
+GET /intelligence/evidence?topic_id=1&topic_id=3&limit=20&offset=20
+GET /intelligence/evidence?topic_id=2&category=cs.CV&category_scope=primary
+```
+
+The standard `{meta, data}` envelope surrounds:
+
+```json
+{
+  "total": 45,
+  "limit": 20,
+  "offset": 0,
+  "has_more": true,
+  "records": [{
+    "paper_id": "example-id",
+    "title": "Example publication",
+    "abstract": null,
+    "published_date": "2026-07-10T12:00:00Z",
+    "authors": ["Example Author"],
+    "primary_category": "cs.AI",
+    "arxiv_url": null,
+    "pdf_url": null
+  }]
+}
+```
+
+Values are illustrative. Fields come from existing `vw_paper_details`; authors
+are its sorted, distinct author-name array, not disambiguated researcher IDs.
+Publication timestamps serialize in UTC regardless of session timezone. Optional
+text/link fields retain null values rather than invent data.
+
+Matching rows are one fact row per stored ID. Separate `EXISTS` predicates avoid
+many-to-many multiplication and implement the two-topic intersection. Pagination
+therefore follows deduplication by construction. Page IDs are selected first,
+then joined to the existing detail view; no per-paper detail queries or duplicate
+author serializer are introduced. Ordering is `published_date DESC, paper_id ASC`.
+Count and records are computed in one SQL statement/snapshot.
+
+`has_more` is true when `offset + returned_record_count < total`. Offsets at or
+beyond the total return an empty page, the unchanged total, and false. With no
+category filter, category scope does not further restrict the population. Two
+categories are not supported. Offset pagination is deterministic within a stable
+warehouse; concurrent ingestion between separate requests can shift pages.
+
+## Mapping chart interactions to evidence
+
+All current analytical bucket/window boundaries are UTC midnights, so existing
+inclusive date filters reproduce them exactly. For a half-open interval
+`[effective_start, effective_end_exclusive)`, use:
+
+```text
+date_from = effective_start UTC date
+date_to   = effective_end_exclusive UTC date minus one day
+```
+
+| Interaction | Evidence filters | Matching measure |
+|---|---|---|
+| Momentum topic/week | Topic ID + point's effective dates | `paper_count` |
+| Composition topic/week | Topic ID + week's effective dates | `topic_papers` |
+| Composition weekly denominator | Same effective dates, omit topics | `total_papers` |
+| Relationship edge | Both topic IDs + selected interval dates | `shared_paper_count` |
+| Heatmap cell | Topic ID + category code + selected scope/dates | Cell `paper_count` |
+| Momentum Matrix topic/window | Topic ID + previous/recent half-open window converted as above | Corresponding window paper count |
+
+Use effective clipped dates for partial momentum/composition weeks, not the entire
+calendar bucket. Relationship/heatmap omitted sides remain unbounded. Matrix
+comparison windows already contain full weeks. No new timestamp-filter interface
+is needed to reproduce these current contracts.
+
+## Phase 1D validation and limitations
+
+`tests/test_intelligence_composition_evidence.py` exercises overlapping/duplicate
+tags, untagged denominators, zero weeks, partial boundaries, topic/category
+validation, pagination ties, all/primary category semantics and evidence count
+reconciliation with all five analytics datasets. Read-only fixtures use the actual
+repository detail-view SELECT, never its DDL, to verify author serialization.
+The complete offline suite is run with the live connection test excluded; opt-in
+PostgreSQL fixture tests require the existing configured connection.
+
+Shared UTC helpers and schema/ETL contracts remain unchanged. Stored versions count
+as separate IDs; topic classifications can overlap and be noisy. Historical
+coverage remains unknown. Evidence does not add embeddings, semantic similarity,
+search ranking, authentication or AI functionality.
