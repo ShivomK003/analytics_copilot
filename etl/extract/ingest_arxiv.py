@@ -1,7 +1,11 @@
 import logging
+import math
+import random
 import time
-from contextlib import nullcontext
+from contextlib import contextmanager, nullcontext
+from contextvars import ContextVar
 from datetime import datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
 from urllib.parse import urlencode
 
 import feedparser
@@ -17,6 +21,9 @@ DEFAULT_TIMEOUT = 90
 MAX_RETRIES = 3
 INITIAL_RETRY_DELAY_SECONDS = 2
 RATE_LIMIT_RETRY_DELAY_SECONDS = 30
+MAX_RETRY_DELAY_SECONDS = 120
+RETRY_JITTER_FRACTION = 0.25
+TRANSIENT_HTTP_STATUSES = frozenset({429, 500, 502, 503, 504})
 ARXIV_USER_AGENT = "AnalyticsCopilot/1.0 (mailto:shivomkarnad@gmail.com)"
 RAW_COLUMNS = [
     "paper_id",
@@ -30,6 +37,84 @@ RAW_COLUMNS = [
     "pdf_url",
     "arxiv_url",
 ]
+
+
+class _RequestPacer:
+    """Enforce sequential attempt-start spacing using monotonic time, not wall time."""
+
+    def __init__(self) -> None:
+        self.last_attempt_at: float | None = None
+        self.server_retry_at = 0.0
+        self.cooldown_exceeded = False
+
+    def note_server_cooldown(self, seconds: float | None) -> None:
+        """Retain server cooldowns across category failures; over-budget runs send no more requests."""
+        if seconds is not None:
+            self.server_retry_at = max(self.server_retry_at, time.monotonic() + seconds)
+            self.cooldown_exceeded |= seconds > MAX_RETRY_DELAY_SECONDS
+
+    def wait(self, retry_delay: float = 0) -> float:
+        """Wait for the larger of retry cooldown and remaining minimum spacing."""
+        remaining = 0.0 if self.last_attempt_at is None else max(
+            0.0, REQUEST_DELAY_SECONDS - (time.monotonic() - self.last_attempt_at)
+        )
+        delay = max(retry_delay, remaining, self.server_retry_at - time.monotonic())
+        if delay > 0:
+            time.sleep(delay)
+        return delay
+
+
+_REQUEST_PACER: ContextVar[_RequestPacer | None] = ContextVar("arxiv_request_pacer", default=None)
+
+
+@contextmanager
+def arxiv_request_run():
+    """Share one pacer through nested extraction calls; reset it when the run ends.
+
+    ContextDecorator preserves workflow signatures. Historical and daily entry
+    points establish a run; standalone category/page calls also work independently.
+    """
+    token = None
+    if _REQUEST_PACER.get() is None:
+        token = _REQUEST_PACER.set(_RequestPacer())
+    try:
+        yield
+    finally:
+        if token is not None:
+            _REQUEST_PACER.reset(token)
+
+
+def _retry_after_seconds(value: str | None) -> float | None:
+    """Parse finite nonnegative seconds or an aware HTTP date; invalid values are ignored."""
+    if not value:
+        return None
+    try:
+        seconds = float(value)
+    except (ValueError, OverflowError):
+        try:
+            deadline = parsedate_to_datetime(value)
+            if deadline.tzinfo is None:
+                # Obsolete asctime HTTP dates omit GMT but still denote UTC.
+                deadline = deadline.replace(tzinfo=timezone.utc)
+            seconds = max(0.0, (deadline - datetime.now(timezone.utc)).total_seconds())
+        except (TypeError, ValueError, OverflowError):
+            return None
+    return seconds if math.isfinite(seconds) and seconds >= 0 else None
+
+
+def _retry_delay(attempt: int, status: int | None, server_delay: float | None) -> float | None:
+    """Calculate capped exponential backoff with positive jitter and a server lower bound.
+
+    None means the server requires more than the 120-second sleep budget: fail the
+    page and suppress further HTTP attempts in the run, never cap Retry-After
+    and then retry earlier than the requested cooldown.
+    """
+    if server_delay is not None and server_delay > MAX_RETRY_DELAY_SECONDS:
+        return None
+    base = RATE_LIMIT_RETRY_DELAY_SECONDS if status == 429 else INITIAL_RETRY_DELAY_SECONDS
+    exponential = min(MAX_RETRY_DELAY_SECONDS, base * (2 ** attempt))
+    jittered = min(MAX_RETRY_DELAY_SECONDS, exponential * (1 + random.uniform(0, RETRY_JITTER_FRACTION)))
+    return max(jittered, server_delay or 0.0)
 
 
 def build_query(
@@ -63,6 +148,7 @@ def clean_text(text: str) -> str:
     return " ".join(str(text).replace("\n", " ").split())
 
 
+@arxiv_request_run()
 def fetch_category(
     category: str,
     logger: logging.Logger | None = None,
@@ -73,6 +159,7 @@ def fetch_category(
     date_to: str | None = None,
     max_results: int = ARXIV_MAX_RESULTS,
 ) -> list[dict]:
+    """Fetch one Atom page with bounded transient retries and run-wide attempt pacing."""
 
     active_logger = logger or logging.getLogger("etl")
     client = session or requests.Session()
@@ -96,100 +183,64 @@ def fetch_category(
     )
 
     response: requests.Response | None = None
-
-    # --------------------------------------------------
-    # 1. Request arXiv API with retry handling
-    # --------------------------------------------------
+    pacer = _REQUEST_PACER.get()
+    retry_delay = 0.0
+    status_code = None
+    failure_kind = None
 
     for attempt in range(MAX_RETRIES + 1):
-        try:
-            response = client.get(
-                url,
-                timeout=timeout,
-                headers={"User-Agent": ARXIV_USER_AGENT},
+        if pacer.cooldown_exceeded:
+            active_logger.error(
+                "arXiv request blocked category=%s offset=%s; run Retry-After exceeds sleep budget, no early retry",
+                category, start,
             )
-
+            return []
+        actual_delay = pacer.wait(retry_delay)
+        if attempt:
+            active_logger.warning(
+                "arXiv retry category=%s offset=%s status=%s failure=%s retry=%s/%s delay=%.3fs",
+                category, start, status_code, failure_kind, attempt, MAX_RETRIES, actual_delay,
+            )
+        status_code = None
+        retry_after = None
+        try:
+            pacer.last_attempt_at = time.monotonic()
+            response = client.get(
+                url, timeout=timeout, headers={"User-Agent": ARXIV_USER_AGENT},
+            )
             response.raise_for_status()
             break
-
-        # Handle timeouts and connection errors
-        except (
-            requests.exceptions.ReadTimeout,
-            requests.exceptions.ConnectionError,
-        ) as exc:
-
-            if attempt < MAX_RETRIES:
-                delay = INITIAL_RETRY_DELAY_SECONDS * (2**attempt)
-
-                active_logger.warning(
-                    "Retry %s/%s for category %s due to connection error: %s. "
-                    "Waiting %s seconds.",
-                    attempt + 1,
-                    MAX_RETRIES,
-                    category,
-                    exc,
-                    delay,
-                )
-
-                time.sleep(delay)
-                continue
-
-            active_logger.error(
-                "Skipping category %s after %s failed attempts",
-                category,
-                MAX_RETRIES + 1,
-            )
-            return []
-
-        # Handle HTTP errors, including rate limiting
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as exc:
+            failure_kind = type(exc).__name__
         except requests.exceptions.HTTPError as exc:
-
-            status_code = (
-                exc.response.status_code
-                if exc.response is not None
-                else None
-            )
-
-            if status_code == 429 and attempt < MAX_RETRIES:
-
-                retry_after = exc.response.headers.get("Retry-After")
-
-                try:
-                    delay = (
-                        max(0, float(retry_after))
-                        if retry_after
-                        else RATE_LIMIT_RETRY_DELAY_SECONDS * (2**attempt)
-                    )
-                except (ValueError, OverflowError):
-                    delay = RATE_LIMIT_RETRY_DELAY_SECONDS * (2**attempt)
-
-                active_logger.warning(
-                    "Rate limited by arXiv for category %s (HTTP 429). "
-                    "Retry %s/%s in %.1f seconds.",
-                    category,
-                    attempt + 1,
-                    MAX_RETRIES,
-                    delay,
+            status_code = exc.response.status_code if exc.response is not None else None
+            failure_kind = "HTTPError"
+            if status_code not in TRANSIENT_HTTP_STATUSES:
+                active_logger.error(
+                    "arXiv request failed category=%s offset=%s status=%s attempt=%s/%s; non-retryable HTTP error",
+                    category, start, status_code, attempt + 1, MAX_RETRIES + 1,
                 )
-
-                time.sleep(delay)
-                continue
-
+                return []
+            retry_after = exc.response.headers.get("Retry-After")
+        except requests.RequestException as exc:
             active_logger.error(
-                "Skipping category %s after HTTP error %s: %s",
-                category,
-                status_code,
-                exc,
+                "arXiv request failed category=%s offset=%s status=%s attempt=%s/%s failure=%s",
+                category, start, status_code, attempt + 1, MAX_RETRIES + 1, type(exc).__name__,
             )
             return []
-
-        # Handle other request errors
-        except requests.RequestException as exc:
-
+        server_delay = _retry_after_seconds(retry_after)
+        pacer.note_server_cooldown(server_delay)
+        if attempt == MAX_RETRIES:
             active_logger.error(
-                "Skipping category %s after request failure: %s",
-                category,
-                exc,
+                "arXiv retries exhausted category=%s offset=%s status=%s attempts=%s failure=%s",
+                category, start, status_code, MAX_RETRIES + 1, failure_kind,
+            )
+            return []
+        retry_delay = _retry_delay(attempt, status_code, server_delay)
+        if retry_delay is None:
+            active_logger.error(
+                "arXiv request failed category=%s offset=%s status=%s attempt=%s/%s; Retry-After exceeds %.1fs budget, no early retry",
+                category, start, status_code, attempt + 1, MAX_RETRIES + 1, MAX_RETRY_DELAY_SECONDS,
             )
             return []
 
@@ -330,6 +381,7 @@ def fetch_category(
 
     return papers
 
+@arxiv_request_run()
 def fetch_category_backfill(
     category: str,
     date_from: str,
@@ -438,9 +490,6 @@ def fetch_category_backfill(
             # 7. Move to the next page
             start += page_size
 
-            # Avoid unnecessary waiting after the last permitted page
-            if page_number + 1 < max_pages:
-                time.sleep(REQUEST_DELAY_SECONDS)
 
     raise RuntimeError(
         f"Backfill for {category} reached max_pages={max_pages}. "
@@ -448,6 +497,7 @@ def fetch_category_backfill(
         "Narrow the date range or increase max_pages."
     )
 
+@arxiv_request_run()
 def extract_arxiv_data(
     logger: logging.Logger | None = None,
     categories: list[str] | None = None,
@@ -478,9 +528,7 @@ def extract_arxiv_data(
     categories_succeeded = 0
     categories_failed = 0
 
-    for index, category in enumerate(selected_categories):
-        if index > 0:
-            time.sleep(REQUEST_DELAY_SECONDS)
+    for category in selected_categories:
 
         try:
             papers = fetch_category_backfill(
