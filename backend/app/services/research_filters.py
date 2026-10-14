@@ -7,6 +7,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from fastapi import HTTPException, Query
 
 from app.db import fetch_all
+from app.errors import DatabasePoolTimeout
 
 
 def parse_date_range(
@@ -120,6 +121,10 @@ def analytical_topic_ids(
         return validate_topic_ids(topic_id)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except DatabasePoolTimeout:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Unable to validate topics.") from exc
 
 
 def evidence_topic_ids(
@@ -139,8 +144,10 @@ def evidence_topic_ids(
         return validate_topic_ids(values)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except DatabasePoolTimeout:
+        raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail="Unable to validate evidence topics.") from exc
+        raise HTTPException(status_code=500, detail="Unable to validate topics.") from exc
 
 
 def evidence_category(
@@ -157,6 +164,8 @@ def evidence_category(
             "select category_code from dim_category where lower(category_code) = lower(%s);",
             (code,),
         )
+    except DatabasePoolTimeout:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail="Unable to validate evidence category.") from exc
     if len(rows) != 1:

@@ -14,7 +14,7 @@ models. Dates serialize as ISO `YYYY-MM-DD`; timestamps include a UTC offset
 
 | Field | Meaning |
 |---|---|
-| `date_from`, `date_to` | Requested inclusive dates; null means unbounded. Coverage has no date parameters, so both are null. |
+| `date_from`, `date_to` | Requested inclusive dates; null means omitted. Momentum, momentum matrix and composition resolve omitted bounds using observed data; consumers must use `data.interval` for their resolved reporting dates. Topics, relationships, heatmap and evidence retain unbounded semantics for omitted sides. Coverage has no date parameters, so both are null. |
 | `timezone` | Always `UTC`. |
 | `observed_date_from`, `observed_date_to` | Earliest/latest observed publication dates in the **whole indexed corpus**, independent of the selected topic-count interval. Null if no dated papers exist. |
 | `coverage_status` | Always `unknown` in Phases 1A–1D. No auditable completeness source is currently implemented. |
@@ -23,6 +23,14 @@ models. Dates serialize as ISO `YYYY-MM-DD`; timestamps include a UTC offset
 Observed bounds do not prove continuous or complete ingestion between them.
 `unknown` means completeness has not been verified; it does not assert a gap.
 A successful ETL run indicates execution freshness, not historical completeness.
+
+Database acquisition uses the existing ten-connection pool with a bounded
+30-second wait for capacity. This is separate from the 15-second connection-open
+timeout and does not impose a query execution deadline. When capacity waiting
+expires, the application returns HTTP 503 with
+`{"detail":"Database is temporarily busy. Please retry."}` and `Retry-After: 1`.
+Unexpected topic-validation database errors return generic JSON HTTP 500;
+invalid client selections still return HTTP 422.
 
 ## GET /intelligence/coverage
 

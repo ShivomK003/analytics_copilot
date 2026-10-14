@@ -4,6 +4,7 @@ import os
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from pathlib import Path
+from threading import BoundedSemaphore
 from typing import Any
 
 import psycopg2
@@ -11,6 +12,8 @@ from dotenv import load_dotenv
 from psycopg2.extensions import connection
 from psycopg2.extras import RealDictCursor
 from psycopg2.pool import ThreadedConnectionPool
+
+from app.errors import DatabasePoolTimeout
 
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
@@ -57,11 +60,18 @@ DATABASE_CONFIG = {
 }
 
 
+POOL_MAX_CONNECTIONS = 10
+POOL_ACQUIRE_TIMEOUT_SECONDS = 30.0
+
 connection_pool = ThreadedConnectionPool(
     minconn=1,
-    maxconn=10,
+    maxconn=POOL_MAX_CONNECTIONS,
     **DATABASE_CONFIG,
 )
+
+# psycopg2 raises immediately at capacity. Gate every checkout instead so excess
+# requests wait without polling or changing the pool's transaction semantics.
+_connection_slots = BoundedSemaphore(POOL_MAX_CONNECTIONS)
 
 
 def get_connection() -> connection:
@@ -77,17 +87,32 @@ def get_connection() -> connection:
 
 @contextmanager
 def get_pooled_connection() -> Iterator[connection]:
-    """Borrow a reusable connection from the application pool."""
+    """Wait up to the capacity timeout, then borrow and always return a connection.
 
-    conn = connection_pool.getconn()
-
+    This bounds semaphore waiting, not SQL execution or opening a new connection;
+    the latter retains DATABASE_CONFIG's separate connect_timeout.
+    """
+    if not _connection_slots.acquire(timeout=POOL_ACQUIRE_TIMEOUT_SECONDS):
+        raise DatabasePoolTimeout("Database connection capacity wait expired.")
     try:
-        yield conn
-    except Exception:
-        conn.rollback()
-        raise
+        conn = connection_pool.getconn()
+        try:
+            yield conn
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            try:
+                connection_pool.putconn(conn)
+            except Exception:
+                # A failed rollback inside putconn must not retain a broken
+                # checkout. Discard it through the pool's public API.
+                conn.close()
+                connection_pool.putconn(conn, close=True)
+                raise
     finally:
-        connection_pool.putconn(conn)
+        # Release even if checkout, rollback, or return fails.
+        _connection_slots.release()
 
 
 def fetch_all(
