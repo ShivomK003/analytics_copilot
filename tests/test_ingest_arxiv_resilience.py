@@ -1,10 +1,11 @@
 import csv
-import logging
 import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
+
+from test_arxiv_retries import FakeClock
 
 import requests
 
@@ -42,6 +43,7 @@ class _SessionContext:
 
 class IngestArxivResilienceTests(unittest.TestCase):
     def test_fetch_category_retries_transient_failures_then_succeeds(self) -> None:
+        clock = FakeClock()
         session = MagicMock()
         session.get.side_effect = [
             requests.exceptions.ReadTimeout("slow"),
@@ -61,45 +63,46 @@ class IngestArxivResilienceTests(unittest.TestCase):
                     entries=[_build_entry()],
                 )
             ),
-            patch("etl.extract.ingest_arxiv.time.sleep") as sleep_mock,
+            patch("etl.extract.ingest_arxiv.time.sleep", side_effect=clock.sleep),
+            patch("etl.extract.ingest_arxiv.time.monotonic", side_effect=clock.monotonic),
+            patch("etl.extract.ingest_arxiv.random.uniform", return_value=0),
         ):
             papers = ingest_arxiv.fetch_category("cs.AI", session=session)
 
         self.assertEqual(len(papers), 1)
         self.assertTrue(ingest_arxiv.fetch_category.last_request_succeeded)
         self.assertEqual(
-            sleep_mock.call_args_list,
-            [call(ingest_arxiv.INITIAL_RETRY_DELAY_SECONDS), call(ingest_arxiv.INITIAL_RETRY_DELAY_SECONDS * 2)],
+            clock.sleeps,
+            [3, 4],
         )
         self.assertEqual(session.get.call_count, 3)
-        self.assertIn("Retry 1/3 for category cs.AI due to connection error", "\n".join(captured_logs.output))
-        self.assertIn("Retry 2/3 for category cs.AI due to connection error", "\n".join(captured_logs.output))
+        self.assertIn("retry=1/3", "\n".join(captured_logs.output))
+        self.assertIn("retry=2/3", "\n".join(captured_logs.output))
 
     def test_fetch_category_skips_after_retry_exhaustion(self) -> None:
+        clock = FakeClock()
         session = MagicMock()
         session.get.side_effect = requests.exceptions.ReadTimeout("still slow")
 
         with (
             self.assertLogs("etl", level="WARNING") as captured_logs,
-            patch("etl.extract.ingest_arxiv.time.sleep") as sleep_mock,
+            patch("etl.extract.ingest_arxiv.time.sleep", side_effect=clock.sleep),
+            patch("etl.extract.ingest_arxiv.time.monotonic", side_effect=clock.monotonic),
+            patch("etl.extract.ingest_arxiv.random.uniform", return_value=0),
         ):
             papers = ingest_arxiv.fetch_category("cs.LG", session=session)
 
         self.assertEqual(papers, [])
         self.assertFalse(ingest_arxiv.fetch_category.last_request_succeeded)
         self.assertEqual(
-            sleep_mock.call_args_list,
-            [
-                call(ingest_arxiv.INITIAL_RETRY_DELAY_SECONDS),
-                call(ingest_arxiv.INITIAL_RETRY_DELAY_SECONDS * 2),
-                call(ingest_arxiv.INITIAL_RETRY_DELAY_SECONDS * 4),
-            ],
+            clock.sleeps,
+            [3, 4, 8],
         )
         log_text = "\n".join(captured_logs.output)
-        self.assertIn("Retry 1/3 for category cs.LG due to connection error", log_text)
-        self.assertIn("Retry 2/3 for category cs.LG due to connection error", log_text)
-        self.assertIn("Retry 3/3 for category cs.LG due to connection error", log_text)
-        self.assertIn("Skipping category cs.LG after 4 failed attempts", log_text)
+        self.assertIn("retry=1/3", log_text)
+        self.assertIn("retry=2/3", log_text)
+        self.assertIn("retry=3/3", log_text)
+        self.assertIn("retries exhausted category=cs.LG offset=0 status=None attempts=4", log_text)
 
     def test_extract_arxiv_data_aborts_when_category_fails(self) -> None:
         def fake_fetch_category_backfill(category: str, **kwargs):

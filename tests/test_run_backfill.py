@@ -30,7 +30,6 @@ def test_backfill_runs_all_stages_without_database(tmp_path):
             return_value=papers,
         ) as fetch,
         patch.object(run_backfill, "fetch_category_backfill", return_value=papers) as fetch,
-        patch.object(run_backfill.time, "sleep"),
         patch.object(
             run_backfill,
             "transform_arxiv_data",
@@ -83,7 +82,6 @@ def test_backfill_aborts_on_extraction_failure(tmp_path):
             "fetch_category_backfill",
             side_effect=fake_fetch,
         ),
-        patch.object(run_backfill.time, "sleep"),
         patch.object(run_backfill, "transform_arxiv_data") as transform,
         patch.object(run_backfill, "validate_arxiv_data") as validate,
         patch.object(run_backfill, "build_warehouse_tables") as warehouse,
@@ -112,7 +110,6 @@ def test_backfill_aborts_on_validation_failure(tmp_path):
             "fetch_category_backfill",
             return_value=papers,
         ),
-        patch.object(run_backfill.time, "sleep"),
         patch.object(
             run_backfill,
             "transform_arxiv_data",

@@ -3,13 +3,12 @@ import csv
 import logging
 import shutil
 import tempfile
-import time
 from datetime import datetime
 from pathlib import Path
 
 from etl.config import ARXIV_CATEGORIES, DATA_DIR
 from etl.extract.ingest_arxiv import (
-    REQUEST_DELAY_SECONDS,
+    arxiv_request_run,
     fetch_category_backfill,
 )
 from etl.transform.transform_arxiv import transform_arxiv_data
@@ -32,12 +31,14 @@ RAW_COLUMNS = [
 ]
 
 
+@arxiv_request_run()
 def run_backfill(
     date_from: str,
     date_to: str,
     page_size: int = 100,
     max_pages: int = 50,
 ) -> dict:
+    """Build validated historical artifacts with shared HTTP pacing; never load Supabase."""
     date_format = "%Y%m%d%H%M"
 
     start_date = datetime.strptime(date_from, date_format)
@@ -83,9 +84,7 @@ def run_backfill(
         all_papers: list[dict] = []
 
         # 1. Extract all categories before writing files
-        for index, category in enumerate(ARXIV_CATEGORIES):
-            if index > 0:
-                time.sleep(REQUEST_DELAY_SECONDS)
+        for category in ARXIV_CATEGORIES:
 
             papers = fetch_category_backfill(
                 category=category,
