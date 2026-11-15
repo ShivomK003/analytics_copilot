@@ -1,10 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import {
-  getTopicDistribution,
-  getTopicWeekly,
-  getTopicGrowth,
-} from "../api/topics";
+import { getTopicDistribution, getTopicWeekly, getTopicGrowth } from "../api/topics";
 
 const TOPICS_STALE_TIME = 5 * 60 * 1000;
 

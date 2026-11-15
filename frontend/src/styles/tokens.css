@@ -1,7 +1,6 @@
 :root {
   --font-family-sans: "Aptos", "Segoe UI", "Trebuchet MS", sans-serif;
-  --font-family-heading: "Aptos Display", "Segoe UI Semibold", "Trebuchet MS",
-    sans-serif;
+  --font-family-heading: "Aptos Display", "Segoe UI Semibold", "Trebuchet MS", sans-serif;
   --font-family-mono: "Cascadia Code", "Consolas", monospace;
 
   --font-size-xs: clamp(0.75rem, 0.72rem + 0.1vw, 0.8125rem);
@@ -37,6 +36,37 @@
   --color-text-secondary: #42506b;
   --color-text-muted: #66748f;
   --color-accent: #4563eb;
+  --color-lavender: #7565c9;
+  --color-lavender-subtle: #f0edff;
+  --heatmap-1: #f0edff;
+  --heatmap-2: #d8ccf3;
+  --heatmap-3: #b19adc;
+  --heatmap-4: #7751b5;
+  --heatmap-5: #4e267e;
+  --heatmap-warm-1: #fff5e9;
+  --heatmap-warm-2: #ffe2c0;
+  --heatmap-warm-3: #ffc58c;
+  --heatmap-warm-4: #f39a52;
+  --heatmap-warm-5: #a94712;
+  --color-prevalence-positive: #6554c0;
+  --color-prevalence-negative: #b96636;
+  --heatmap-on-dark: #ffffff;
+  --surface-page:
+    radial-gradient(ellipse at top left, rgb(69 99 235 / 0.12), transparent 45%),
+    radial-gradient(ellipse at top right, rgb(117 101 201 / 0.14), transparent 48%),
+    linear-gradient(180deg, #f9fbff 0%, var(--color-background) 65%, #eaf0fb 100%);
+  --surface-navigation: rgb(248 249 255 / 0.88);
+  --navigation-blur: 18px;
+  --color-navigation-focus: #c4b5fd;
+  --surface-hero:
+    radial-gradient(circle at top left, rgb(147 197 253 / 0.24), transparent 42%),
+    radial-gradient(circle at bottom right, rgb(167 139 250 / 0.2), transparent 40%),
+    linear-gradient(135deg, #f6faff, #edf3ff);
+  --surface-card: linear-gradient(180deg, #ffffff, #fafbff);
+  --chart-background: #f8faff;
+  --chart-height: 24rem;
+  --motion-fast: 160ms;
+  /* Breakpoints: 48rem tablet, 64rem desktop shell, 70rem wide dashboard. */
   --color-accent-hover: #334fca;
   --color-accent-subtle: #e6ecff;
   --color-success: #1f8f61;

@@ -10,22 +10,11 @@ import { Card } from "../components/ui/Card";
 import { EmptyState } from "../components/feedback/EmptyState";
 import { ErrorState } from "../components/feedback/ErrorState";
 
-import {
-  useAuthorSearch,
-  useAuthorCount,
-} from "../hooks/useAuthors";
+import { useAuthorSearch, useAuthorCount } from "../hooks/useAuthors";
 
 const PAGE_SIZE = 10;
 
-const RESEARCH_TOPICS = [
-  "llm",
-  "agents",
-  "rag",
-  "reasoning",
-  "vision",
-  "multimodal",
-  "rl",
-];
+const RESEARCH_TOPICS = ["llm", "agents", "rag", "reasoning", "vision", "multimodal", "rl"];
 
 export function AuthorsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -35,10 +24,7 @@ export function AuthorsPage() {
 
   const rawPage = Number(searchParams.get("page") ?? "1");
 
-  const currentPage =
-    Number.isSafeInteger(rawPage) && rawPage > 0
-      ? rawPage
-      : 1;
+  const currentPage = Number.isSafeInteger(rawPage) && rawPage > 0 ? rawPage : 1;
 
   const offset = (currentPage - 1) * PAGE_SIZE;
 
@@ -55,10 +41,7 @@ export function AuthorsPage() {
     offset,
   });
 
-  const countQuery = useAuthorCount(
-    searchQuery || undefined,
-    selectedTopic || undefined,
-  );
+  const countQuery = useAuthorCount(searchQuery || undefined, selectedTopic || undefined);
 
   const authors = authorsQuery.data ?? [];
   const totalAuthors = countQuery.data?.total ?? 0;
@@ -66,8 +49,7 @@ export function AuthorsPage() {
 
   const isFirstPage = currentPage === 1;
 
-  const isLastPage =
-    !countQuery.isSuccess || currentPage >= totalPages;
+  const isLastPage = !countQuery.isSuccess || currentPage >= totalPages;
 
   function updateFilters(query: string, topic: string) {
     const params = new URLSearchParams();
@@ -102,9 +84,7 @@ export function AuthorsPage() {
     setSearchParams(params);
   }
 
-  const returnTo = `/authors${
-    searchParams.toString() ? `?${searchParams.toString()}` : ""
-  }`;
+  const returnTo = `/authors${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
 
   return (
     <PageContainer>
@@ -125,38 +105,31 @@ export function AuthorsPage() {
           icon={<Search size={18} />}
           tone="accent"
         >
-          <form onSubmit={handleSearch} style={searchFormStyle}>
+          <form onSubmit={handleSearch} className="search-toolbar">
             <input
               type="search"
               placeholder="Search researcher names..."
               aria-label="Search researcher names"
               value={searchInput}
-              onChange={(event) =>
-                setSearchInput(event.target.value)
-              }
-              style={inputStyle}
+              onChange={(event) => setSearchInput(event.target.value)}
+              className="form-control search-input"
             />
 
-            <button type="submit" style={primaryButtonStyle}>
+            <button type="submit" className="button button-accent">
               Search
             </button>
           </form>
 
-          <div style={filterRowStyle}>
-            <label
-              htmlFor="author-topic-filter"
-              style={labelStyle}
-            >
+          <div className="filter-toolbar">
+            <label htmlFor="author-topic-filter" style={labelStyle}>
               Research topic
             </label>
 
             <select
               id="author-topic-filter"
               value={selectedTopic}
-              onChange={(event) =>
-                handleTopicChange(event.target.value)
-              }
-              style={selectStyle}
+              onChange={(event) => handleTopicChange(event.target.value)}
+              className="form-control"
             >
               <option value="">All topics</option>
 
@@ -167,20 +140,14 @@ export function AuthorsPage() {
               ))}
             </select>
 
-            <button
-              type="button"
-              onClick={handleReset}
-              style={secondaryButtonStyle}
-            >
+            <button type="button" onClick={handleReset} className="button button-secondary">
               Reset filters
             </button>
           </div>
 
-          <div style={resultsHeaderStyle}>
+          <div className="results-heading">
             <div>
-              <h3 style={resultsTitleStyle}>
-                Matching Researchers
-              </h3>
+              <h3 style={resultsTitleStyle}>Matching Researchers</h3>
 
               <p style={mutedStyle}>
                 {selectedTopic
@@ -190,9 +157,7 @@ export function AuthorsPage() {
             </div>
 
             {countQuery.isSuccess && (
-              <span style={countStyle}>
-                {totalAuthors.toLocaleString()} researchers
-              </span>
+              <span style={countStyle}>{totalAuthors.toLocaleString()} researchers</span>
             )}
           </div>
 
@@ -224,12 +189,10 @@ export function AuthorsPage() {
                     key={author.author_id}
                     to={`/authors/${author.author_id}`}
                     state={{ returnTo }}
-                    style={authorRowStyle}
+                    className="research-result author-result"
                   >
                     <div>
-                      <div style={authorNameStyle}>
-                        {author.author_name}
-                      </div>
+                      <div style={authorNameStyle}>{author.author_name}</div>
 
                       <div style={authorMetadataStyle}>
                         {author.distinct_topic_count} research topics
@@ -246,31 +209,21 @@ export function AuthorsPage() {
                       </div>
 
                       <div style={authorMetadataStyle}>
-                        {selectedTopic
-                          ? `${selectedTopic.toUpperCase()} papers`
-                          : "Indexed papers"}
+                        {selectedTopic ? `${selectedTopic.toUpperCase()} papers` : "Indexed papers"}
                       </div>
                     </div>
 
-                    <ArrowRight
-                      size={17}
-                      style={{ flexShrink: 0 }}
-                    />
+                    <ArrowRight size={17} style={{ flexShrink: 0 }} />
                   </Link>
                 ))}
               </div>
 
-              <div style={paginationStyle}>
+              <div className="pagination-toolbar">
                 <button
                   type="button"
-                  disabled={
-                    isFirstPage || authorsQuery.isFetching
-                  }
+                  disabled={isFirstPage || authorsQuery.isFetching}
                   onClick={() => changePage(currentPage - 1)}
-                  style={{
-                    ...secondaryButtonStyle,
-                    opacity: isFirstPage ? 0.4 : 1,
-                  }}
+                  className="button button-secondary"
                 >
                   Previous
                 </button>
@@ -287,9 +240,7 @@ export function AuthorsPage() {
                       </div>
                     </>
                   ) : countQuery.isError ? (
-                    <span>
-                      Page {currentPage} · Total unavailable
-                    </span>
+                    <span>Page {currentPage} · Total unavailable</span>
                   ) : (
                     <span>Loading page count...</span>
                   )}
@@ -297,14 +248,9 @@ export function AuthorsPage() {
 
                 <button
                   type="button"
-                  disabled={
-                    isLastPage || authorsQuery.isFetching
-                  }
+                  disabled={isLastPage || authorsQuery.isFetching}
                   onClick={() => changePage(currentPage + 1)}
-                  style={{
-                    ...secondaryButtonStyle,
-                    opacity: isLastPage ? 0.4 : 1,
-                  }}
+                  className="button button-secondary"
                 >
                   Next
                 </button>
@@ -317,61 +263,6 @@ export function AuthorsPage() {
   );
 }
 
-const searchFormStyle: CSSProperties = {
-  display: "flex",
-  gap: 12,
-  flexWrap: "wrap",
-  marginBottom: 20,
-};
-
-const filterRowStyle: CSSProperties = {
-  display: "flex",
-  gap: 12,
-  alignItems: "center",
-  flexWrap: "wrap",
-  marginBottom: 28,
-};
-
-const inputStyle: CSSProperties = {
-  flex: "1 1 280px",
-  minWidth: 0,
-  padding: "11px 14px",
-  borderRadius: 8,
-  border: "1px solid var(--color-border)",
-  background: "var(--color-surface)",
-  color: "var(--color-text-primary)",
-  fontSize: 14,
-};
-
-const selectStyle: CSSProperties = {
-  padding: "10px 14px",
-  borderRadius: 8,
-  border: "1px solid var(--color-border)",
-  background: "var(--color-surface)",
-  color: "var(--color-text-primary)",
-  fontSize: 13,
-};
-
-const primaryButtonStyle: CSSProperties = {
-  padding: "10px 18px",
-  borderRadius: 8,
-  border: "1px solid var(--color-accent)",
-  background: "var(--color-accent)",
-  color: "#ffffff",
-  fontWeight: 500,
-  cursor: "pointer",
-};
-
-const secondaryButtonStyle: CSSProperties = {
-  padding: "9px 14px",
-  borderRadius: 8,
-  border: "1px solid var(--color-border)",
-  background: "var(--color-surface)",
-  color: "var(--color-text-secondary)",
-  fontWeight: 500,
-  cursor: "pointer",
-};
-
 const labelStyle: CSSProperties = {
   fontSize: 13,
   fontWeight: 500,
@@ -382,16 +273,6 @@ const mutedStyle: CSSProperties = {
   margin: "6px 0 0",
   fontSize: 13,
   color: "var(--color-text-secondary)",
-};
-
-const resultsHeaderStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: 12,
-  marginBottom: 16,
-  paddingTop: 20,
-  borderTop: "1px solid var(--color-border)",
 };
 
 const resultsTitleStyle: CSSProperties = {
@@ -411,23 +292,6 @@ const resultsListStyle: CSSProperties = {
   display: "flex",
   flexDirection: "column",
   gap: 10,
-};
-
-const authorRowStyle: CSSProperties = {
-  width: "100%",
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: 16,
-  padding: "16px 18px",
-  borderRadius: 10,
-  border: "1px solid var(--color-border)",
-  background: "var(--color-surface)",
-  cursor: "pointer",
-  textAlign: "left",
-  textDecoration: "none",
-  color: "var(--color-text-secondary)",
-  boxSizing: "border-box",
 };
 
 const authorNameStyle: CSSProperties = {
@@ -452,14 +316,6 @@ const paperCountStyle: CSSProperties = {
   fontSize: 17,
   fontWeight: 600,
   color: "var(--color-text-primary)",
-};
-
-const paginationStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  marginTop: 24,
-  gap: 12,
 };
 
 const pageInfoStyle: CSSProperties = {

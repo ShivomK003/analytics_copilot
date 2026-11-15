@@ -56,15 +56,10 @@ export function MultiSeriesWeeklyChart({
     const totals = new Map<string, number>();
 
     for (const row of data) {
-      totals.set(
-        row.series_name,
-        (totals.get(row.series_name) ?? 0) + row.paper_count,
-      );
+      totals.set(row.series_name, (totals.get(row.series_name) ?? 0) + row.paper_count);
     }
 
-    return [...totals.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .map(([name]) => name);
+    return [...totals.entries()].sort((a, b) => b[1] - a[1]).map(([name]) => name);
   }, [data]);
 
   // null means the user has not customized the default selection.
@@ -72,13 +67,11 @@ export function MultiSeriesWeeklyChart({
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
 
-  const activeSeries =
-    selectedSeries === null ? series.slice(0, 3) : selectedSeries;
+  const activeSeries = selectedSeries === null ? series.slice(0, 3) : selectedSeries;
 
   const availableSeries = series.filter(
     (name) =>
-      !activeSeries.includes(name) &&
-      name.toLowerCase().includes(searchQuery.trim().toLowerCase()),
+      !activeSeries.includes(name) && name.toLowerCase().includes(searchQuery.trim().toLowerCase()),
   );
 
   const chartData = useMemo(() => {
@@ -95,9 +88,7 @@ export function MultiSeriesWeeklyChart({
       weeks.get(row.week_start)![row.series_name] = row.paper_count;
     }
 
-    return [...weeks.values()].sort((a, b) =>
-      a.week_start.localeCompare(b.week_start),
-    );
+    return [...weeks.values()].sort((a, b) => a.week_start.localeCompare(b.week_start));
   }, [data]);
 
   function toggleSeries(name: string) {
@@ -114,12 +105,7 @@ export function MultiSeriesWeeklyChart({
   }
 
   if (data.length === 0) {
-    return (
-      <EmptyState
-        title={emptyTitle}
-        description={emptyDescription}
-      />
-    );
+    return <EmptyState title={emptyTitle} description={emptyDescription} />;
   }
 
   return (
@@ -137,8 +123,7 @@ export function MultiSeriesWeeklyChart({
         >
           {series.map((name) => {
             const selected = activeSeries.includes(name);
-            const disabled =
-              !selected && activeSeries.length >= maxSelected;
+            const disabled = !selected && activeSeries.length >= maxSelected;
 
             return (
               <button
@@ -153,12 +138,8 @@ export function MultiSeriesWeeklyChart({
                   border: selected
                     ? "1px solid var(--color-accent)"
                     : "1px solid var(--color-border)",
-                  background: selected
-                    ? "var(--color-accent)"
-                    : "var(--color-surface)",
-                  color: selected
-                    ? "#ffffff"
-                    : "var(--color-text-secondary)",
+                  background: selected ? "var(--color-accent)" : "var(--color-surface)",
+                  color: selected ? "#ffffff" : "var(--color-text-secondary)",
                   cursor: disabled ? "not-allowed" : "pointer",
                   opacity: disabled ? 0.5 : 1,
                 }}
@@ -228,11 +209,7 @@ export function MultiSeriesWeeklyChart({
                 background: "var(--color-surface)",
               }}
             >
-              <Search
-                size={17}
-                color="var(--color-text-muted)"
-                aria-hidden="true"
-              />
+              <Search size={17} color="var(--color-text-muted)" aria-hidden="true" />
 
               <input
                 type="search"
@@ -244,9 +221,7 @@ export function MultiSeriesWeeklyChart({
                     : "Search and add a category..."
                 }
                 aria-label="Search categories"
-                aria-expanded={
-                  searchOpen && activeSeries.length < maxSelected
-                }
+                aria-expanded={searchOpen && activeSeries.length < maxSelected}
                 aria-controls="weekly-series-search-results"
                 onFocus={() => setSearchOpen(true)}
                 onChange={(event) => {
@@ -335,8 +310,7 @@ export function MultiSeriesWeeklyChart({
               fontSize: 12,
             }}
           >
-            Search available categories and select up to {maxSelected} to
-            compare.
+            Search available categories and select up to {maxSelected} to compare.
           </p>
         </div>
       )}
@@ -357,10 +331,7 @@ export function MultiSeriesWeeklyChart({
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart
-              data={chartData}
-              margin={{ top: 8, right: 16, bottom: 8, left: 0 }}
-            >
+            <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
               <CartesianGrid
                 stroke="rgb(186 198 219 / 0.45)"
                 strokeDasharray="3 3"

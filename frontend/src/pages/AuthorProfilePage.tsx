@@ -1,11 +1,7 @@
 import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 
-import {
-  Link,
-  useLocation,
-  useParams,
-} from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 
 import {
   ArrowLeft,
@@ -25,11 +21,7 @@ import { Card } from "../components/ui/Card";
 import { EmptyState } from "../components/feedback/EmptyState";
 import { ErrorState } from "../components/feedback/ErrorState";
 
-import {
-  useAuthorDetails,
-  useAuthorTopics,
-  useAuthorPapers,
-} from "../hooks/useAuthors";
+import { useAuthorDetails, useAuthorTopics, useAuthorPapers } from "../hooks/useAuthors";
 
 import type { AuthorPaperItem } from "../types/dashboard";
 
@@ -46,17 +38,14 @@ export function AuthorProfilePage() {
     returnTo?: string;
   } | null;
 
-  const returnTo =
-    navigationState?.returnTo?.startsWith("/authors")
-      ? navigationState.returnTo
-      : "/authors";
+  const returnTo = navigationState?.returnTo?.startsWith("/authors")
+    ? navigationState.returnTo
+    : "/authors";
 
   const parsedAuthorId = Number(authorIdParam);
 
   const authorId =
-    Number.isSafeInteger(parsedAuthorId) && parsedAuthorId > 0
-      ? parsedAuthorId
-      : null;
+    Number.isSafeInteger(parsedAuthorId) && parsedAuthorId > 0 ? parsedAuthorId : null;
 
   const [selectedTopic, setSelectedTopic] = useState("");
   const [paperPage, setPaperPage] = useState(1);
@@ -74,14 +63,9 @@ export function AuthorProfilePage() {
   const author = authorQuery.data;
   const topics = topicsQuery.data ?? [];
 
-  const sortedTopics = [...topics].sort(
-    (a, b) => b.paper_count - a.paper_count,
-  );
+  const sortedTopics = [...topics].sort((a, b) => b.paper_count - a.paper_count);
 
-  const maxTopicPapers = Math.max(
-    1,
-    ...sortedTopics.map((topic) => topic.paper_count),
-  );
+  const maxTopicPapers = Math.max(1, ...sortedTopics.map((topic) => topic.paper_count));
 
   const fetchedPapers = papersQuery.data ?? [];
   const papers = fetchedPapers.slice(0, PAPERS_PER_PAGE);
@@ -244,17 +228,11 @@ export function AuthorProfilePage() {
           ) : (
             <div style={topicListStyle}>
               {sortedTopics.map((topic) => {
-                const percentage =
-                  (topic.paper_count / maxTopicPapers) * 100;
+                const percentage = (topic.paper_count / maxTopicPapers) * 100;
 
                 return (
-                  <div
-                    key={topic.topic_id}
-                    style={topicRowStyle}
-                  >
-                    <div style={topicLabelStyle}>
-                      {topic.topic_name}
-                    </div>
+                  <div key={topic.topic_id} style={topicRowStyle}>
+                    <div style={topicLabelStyle}>{topic.topic_name}</div>
 
                     <div style={topicTrackStyle}>
                       <div
@@ -265,9 +243,7 @@ export function AuthorProfilePage() {
                       />
                     </div>
 
-                    <div style={topicCountStyle}>
-                      {topic.paper_count}
-                    </div>
+                    <div style={topicCountStyle}>{topic.paper_count}</div>
                   </div>
                 );
               })}
@@ -290,28 +266,20 @@ export function AuthorProfilePage() {
           tone="accent"
         >
           <div style={publicationControlsStyle}>
-            <label
-              htmlFor="publication-topic-filter"
-              style={labelStyle}
-            >
+            <label htmlFor="publication-topic-filter" style={labelStyle}>
               Filter by topic
             </label>
 
             <select
               id="publication-topic-filter"
               value={selectedTopic}
-              onChange={(event) =>
-                handleTopicChange(event.target.value)
-              }
+              onChange={(event) => handleTopicChange(event.target.value)}
               style={selectStyle}
             >
               <option value="">All topics</option>
 
               {sortedTopics.map((topic) => (
-                <option
-                  key={topic.topic_id}
-                  value={topic.topic_name}
-                >
+                <option key={topic.topic_id} value={topic.topic_name}>
                   {topic.topic_name}
                 </option>
               ))}
@@ -352,10 +320,7 @@ export function AuthorProfilePage() {
             <>
               <div style={publicationListStyle}>
                 {papers.map((paper) => (
-                  <PublicationCard
-                    key={paper.paper_id}
-                    paper={paper}
-                  />
+                  <PublicationCard key={paper.paper_id} paper={paper} />
                 ))}
               </div>
 
@@ -363,9 +328,7 @@ export function AuthorProfilePage() {
                 <button
                   type="button"
                   onClick={handlePreviousPage}
-                  disabled={
-                    !hasPreviousPage || papersQuery.isFetching
-                  }
+                  disabled={!hasPreviousPage || papersQuery.isFetching}
                   style={{
                     ...secondaryButtonStyle,
                     opacity: hasPreviousPage ? 1 : 0.4,
@@ -374,16 +337,12 @@ export function AuthorProfilePage() {
                   Previous
                 </button>
 
-                <span style={pageLabelStyle}>
-                  Page {paperPage}
-                </span>
+                <span style={pageLabelStyle}>Page {paperPage}</span>
 
                 <button
                   type="button"
                   onClick={handleNextPage}
-                  disabled={
-                    !hasNextPage || papersQuery.isFetching
-                  }
+                  disabled={!hasNextPage || papersQuery.isFetching}
                   style={{
                     ...secondaryButtonStyle,
                     opacity: hasNextPage ? 1 : 0.4,
@@ -398,9 +357,9 @@ export function AuthorProfilePage() {
       </PageSection>
 
       <p style={datasetNoteStyle}>
-        Researcher records are derived from author names in the indexed
-        arXiv dataset. Names may not uniquely identify individuals, and
-        publication counts do not represent complete academic histories.
+        Researcher records are derived from author names in the indexed arXiv dataset. Names may not
+        uniquely identify individuals, and publication counts do not represent complete academic
+        histories.
       </p>
     </PageContainer>
   );
@@ -431,36 +390,22 @@ function MetricCard({
         <span>{label}</span>
       </div>
 
-      <div style={metricValueStyle}>
-        {value}
-      </div>
+      <div style={metricValueStyle}>{value}</div>
     </div>
   );
 }
 
-function PublicationCard({
-  paper,
-}: {
-  paper: AuthorPaperItem;
-}) {
+function PublicationCard({ paper }: { paper: AuthorPaperItem }) {
   const [showAbstract, setShowAbstract] = useState(false);
 
   return (
     <article style={publicationCardStyle}>
-      <h3 style={paperTitleStyle}>
-        {paper.title}
-      </h3>
+      <h3 style={paperTitleStyle}>{paper.title}</h3>
 
       <div style={paperMetadataStyle}>
-        {paper.primary_category && (
-          <span>{paper.primary_category}</span>
-        )}
+        {paper.primary_category && <span>{paper.primary_category}</span>}
 
-        {paper.published_date && (
-          <span>
-            Published {formatDate(paper.published_date)}
-          </span>
-        )}
+        {paper.published_date && <span>Published {formatDate(paper.published_date)}</span>}
       </div>
 
       {paper.topics.length > 0 && (
@@ -475,17 +420,14 @@ function PublicationCard({
 
       {showAbstract && (
         <div style={abstractStyle}>
-          {paper.abstract?.trim() ||
-            "No abstract is available for this publication."}
+          {paper.abstract?.trim() || "No abstract is available for this publication."}
         </div>
       )}
 
       <div style={paperActionsStyle}>
         <button
           type="button"
-          onClick={() =>
-            setShowAbstract((previous) => !previous)
-          }
+          onClick={() => setShowAbstract((previous) => !previous)}
           aria-expanded={showAbstract}
           style={textButtonStyle}
         >

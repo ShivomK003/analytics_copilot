@@ -8,13 +8,7 @@ type PageSectionProps = {
   action?: ReactNode;
 };
 
-export function PageSection({
-  children,
-  title,
-  description,
-  eyebrow,
-  action,
-}: PageSectionProps) {
+export function PageSection({ children, title, description, eyebrow, action }: PageSectionProps) {
   return (
     <section className="page-section">
       {title || description || action ? (

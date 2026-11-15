@@ -31,11 +31,13 @@ export function Sidebar() {
         </nav>
 
         <div className="sidebar-footer">
-          <p className="sidebar-footer-label">System status</p>
-          <p>Tracking research activity across the dashboard shell while live metrics come online next.</p>
+          <p className="sidebar-footer-label">Your research workspace</p>
+          <p>
+            Explore publication activity, discover topics, and follow the research that matters.
+          </p>
           <div className="sidebar-footer-chips" aria-label="System highlights">
-            <span className="sidebar-chip">Tracking 6 AI domains</span>
-            <span className="sidebar-chip">Updated daily via pipeline</span>
+            <span className="sidebar-chip">Indexed research</span>
+            <span className="sidebar-chip">AI & machine learning</span>
           </div>
         </div>
       </div>

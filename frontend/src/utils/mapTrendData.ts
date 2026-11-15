@@ -6,11 +6,7 @@ import type {
   WeeklyTrendPoint,
 } from "../types/dashboard";
 
-type TrendApiPoint =
-  | CumulativeTrendPoint
-  | DailyTrendPoint
-  | MonthlyTrendPoint
-  | WeeklyTrendPoint;
+type TrendApiPoint = CumulativeTrendPoint | DailyTrendPoint | MonthlyTrendPoint | WeeklyTrendPoint;
 
 export function mapTrendData(data: TrendApiPoint[]): TrendChartPoint[] {
   return data.map((point) => ({
@@ -52,10 +48,7 @@ function getTrendValue(point: TrendApiPoint): number {
   return point.paper_count ?? 0;
 }
 
-function formatDate(
-  value: string | undefined,
-  options: Intl.DateTimeFormatOptions,
-): string {
+function formatDate(value: string | undefined, options: Intl.DateTimeFormatOptions): string {
   if (!value) {
     return "Unknown";
   }

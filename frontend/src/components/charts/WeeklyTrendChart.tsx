@@ -42,10 +42,7 @@ export function WeeklyTrendChart({ data }: WeeklyTrendChartProps) {
     <div className="chart-shell">
       <div className="chart-frame chart-frame-line">
         <ResponsiveContainer height="100%" width="100%">
-          <LineChart
-            data={chartData}
-            margin={{ top: 8, right: 16, bottom: 8, left: 0 }}
-          >
+          <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
             <CartesianGrid
               stroke="rgb(186 198 219 / 0.45)"
               strokeDasharray="3 3"
@@ -74,9 +71,7 @@ export function WeeklyTrendChart({ data }: WeeklyTrendChartProps) {
                 formatNumber(normalizeChartValue(value)),
                 "Papers",
               ]}
-              labelFormatter={(_, payload) =>
-                payload?.[0]?.payload?.tooltipDate ?? ""
-              }
+              labelFormatter={(_, payload) => payload?.[0]?.payload?.tooltipDate ?? ""}
             />
             <Line
               activeDot={{

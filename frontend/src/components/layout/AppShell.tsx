@@ -1,64 +1,55 @@
+import { useCallback, useId, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { useMemo, useRef, useState } from "react";
 import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "react-router-dom";
-import { navigationItems } from "../../config/navigation";
 import { MobileNavigationDrawer } from "./MobileNavigationDrawer";
-import { Sidebar } from "./Sidebar";
 import { TopHeader } from "./TopHeader";
+import "../../styles/navigation.css";
 
-type AppShellProps = {
-  children: ReactNode;
-};
-
-export function AppShell({ children }: AppShellProps) {
+export function AppShell({ children }: { children: ReactNode }) {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement | null>(null);
+  const mobileMenuId = useId();
   const location = useLocation();
   const queryClient = useQueryClient();
+  const isOverview = location.pathname === "/overview";
+  const fetchingHome = useIsFetching({ queryKey: ["dashboard-home"] });
+  const fetchingCoverage = useIsFetching({ queryKey: ["intelligence", "coverage"] });
+  const fetchingAuthors = useIsFetching({ queryKey: ["authors", "count"] });
+  const fetchingMonthly = useIsFetching({ queryKey: ["trends", "monthly"] });
+  const closeNavigation = useCallback(() => setIsMobileNavOpen(false), []);
 
-  const currentItem = useMemo(
-    () =>
-      navigationItems.find((item) =>
-        location.pathname === item.path
-          ? true
-          : item.path !== "/overview" && location.pathname.startsWith(item.path),
-      ),
-    [location.pathname],
-  );
-  const isOverviewPage = currentItem?.path === "/overview";
-  const isDashboardHomeFetching =
-    useIsFetching({ queryKey: ["dashboard-home"] }) > 0;
+  function refreshSnapshot() {
+    return Promise.all([
+      queryClient.refetchQueries({ queryKey: ["dashboard-home"], type: "active" }),
+      queryClient.refetchQueries({ queryKey: ["intelligence", "coverage"], type: "active" }),
+      queryClient.refetchQueries({ queryKey: ["authors", "count"], type: "active" }),
+      queryClient.refetchQueries({ queryKey: ["trends", "monthly"], type: "active" }),
+    ]);
+  }
 
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content">
         Skip to main content
       </a>
-      <Sidebar />
-      <div className="app-shell-main">
+      <div className="app-shell-main" inert={isMobileNavOpen}>
         <TopHeader
-          currentPageTitle={currentItem?.label ?? "Dashboard"}
-          isRefreshing={isDashboardHomeFetching}
+          isRefreshing={fetchingHome + fetchingCoverage + fetchingAuthors + fetchingMonthly > 0}
+          isMenuOpen={isMobileNavOpen}
+          mobileMenuId={mobileMenuId}
           menuButtonRef={menuButtonRef}
           onOpenNavigation={() => setIsMobileNavOpen(true)}
-          onRefresh={
-            isOverviewPage
-              ? () =>
-                  queryClient.refetchQueries({
-                    queryKey: ["dashboard-home"],
-                    type: "active",
-                  })
-              : undefined
-          }
+          onRefresh={isOverview ? refreshSnapshot : undefined}
         />
         <main className="app-shell-content" id="main-content" tabIndex={-1}>
           {children}
         </main>
       </div>
       <MobileNavigationDrawer
+        id={mobileMenuId}
         isOpen={isMobileNavOpen}
-        onClose={() => setIsMobileNavOpen(false)}
+        onClose={closeNavigation}
         returnFocusRef={menuButtonRef}
       />
     </div>

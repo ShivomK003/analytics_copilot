@@ -14,10 +14,11 @@ import type { TopicDistributionItem } from "../../types/dashboard";
 
 type TopicDistributionChartProps = {
   data: TopicDistributionItem[];
+  compact?: boolean;
 };
 
 type TopicDistributionChartDatum = {
-  paperCount: number;
+  paperCount: number | null;
   topicName: string;
   topicLabel: string;
 };
@@ -26,7 +27,7 @@ type ChartValue = number | string | readonly (number | string)[] | undefined;
 
 const MAX_TOPICS = 8;
 
-export function TopicDistributionChart({ data }: TopicDistributionChartProps) {
+export function TopicDistributionChart({ data, compact = false }: TopicDistributionChartProps) {
   if (data.length === 0) {
     return (
       <EmptyState
@@ -37,11 +38,11 @@ export function TopicDistributionChart({ data }: TopicDistributionChartProps) {
   }
 
   const chartData: TopicDistributionChartDatum[] = [...data]
-    .sort((left, right) => right.paper_count - left.paper_count)
+    .sort((left, right) => (right.paper_count ?? -Infinity) - (left.paper_count ?? -Infinity))
     .slice(0, MAX_TOPICS)
     .map((topic) => ({
-      paperCount: topic.paper_count ?? 0,
-      topicLabel: truncateTopicName(topic.topic_name),
+      paperCount: topic.paper_count ?? null,
+      topicLabel: truncateTopicName(topic.topic_name, compact ? 13 : 18),
       topicName: topic.topic_name ?? "Unknown topic",
     }));
 
@@ -52,7 +53,7 @@ export function TopicDistributionChart({ data }: TopicDistributionChartProps) {
           <BarChart
             data={chartData}
             layout="vertical"
-            margin={{ top: 4, right: 28, bottom: 4, left: 8 }}
+            margin={{ top: 4, right: compact ? 52 : 28, bottom: 4, left: compact ? 0 : 8 }}
           >
             <CartesianGrid
               stroke="rgb(186 198 219 / 0.35)"
@@ -74,7 +75,7 @@ export function TopicDistributionChart({ data }: TopicDistributionChartProps) {
               dataKey="topicLabel"
               tick={{ fill: "var(--color-text-secondary)", fontSize: 12 }}
               tickLine={false}
-              width={112}
+              width={compact ? 90 : 112}
             />
             <Tooltip
               contentStyle={getTooltipStyle()}
@@ -83,9 +84,7 @@ export function TopicDistributionChart({ data }: TopicDistributionChartProps) {
                 formatNumber(normalizeChartValue(value)),
                 "Papers",
               ]}
-              labelFormatter={(_, payload) =>
-                payload?.[0]?.payload?.topicName ?? ""
-              }
+              labelFormatter={(_, payload) => payload?.[0]?.payload?.topicName ?? ""}
             />
             <Bar
               activeBar={{ fill: "var(--color-accent-hover)" }}
@@ -102,7 +101,7 @@ export function TopicDistributionChart({ data }: TopicDistributionChartProps) {
                 fill="var(--color-text-primary)"
                 fontSize={12}
                 formatter={(value: string | number | boolean | null | undefined) =>
-                  formatNumber(Number(value ?? 0))
+                  value == null ? "Unavailable" : formatNumber(Number(value))
                 }
                 position="right"
               />
@@ -110,33 +109,32 @@ export function TopicDistributionChart({ data }: TopicDistributionChartProps) {
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <p className="chart-caption">
-        Percentages may exceed 100% because papers can belong to multiple topics
-      </p>
+      <p className="chart-caption">Papers can belong to multiple topics; topic counts overlap.</p>
     </div>
   );
 }
 
-function truncateTopicName(value: string | null | undefined): string {
+function truncateTopicName(value: string | null | undefined, maximum: number): string {
   const safeValue = value ?? "Unknown topic";
 
-  if (safeValue.length <= 18) {
+  if (safeValue.length <= maximum) {
     return safeValue;
   }
 
-  return `${safeValue.slice(0, 15)}...`;
+  return `${safeValue.slice(0, maximum - 3)}...`;
 }
 
-function formatNumber(value: number): string {
+function formatNumber(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) return "Unavailable";
   return new Intl.NumberFormat("en-US").format(value);
 }
 
-function normalizeChartValue(value: ChartValue): number {
+function normalizeChartValue(value: ChartValue): number | null {
   if (Array.isArray(value)) {
-    return Number(value[0] ?? 0);
+    return value[0] == null ? null : Number(value[0]);
   }
 
-  return Number(value ?? 0);
+  return value == null ? null : Number(value);
 }
 
 function getTooltipStyle() {
