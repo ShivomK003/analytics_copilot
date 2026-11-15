@@ -21,7 +21,7 @@ type Granularity = "daily" | "weekly" | "monthly";
 
 const PAGE_TITLE = "Trends";
 const PAGE_DESCRIPTION =
-  "Publication velocity and long-range growth views will turn this page into the operational trend center.";
+  "Explore publication activity and cumulative growth in the indexed research corpus.";
 
 export function TrendsPage() {
   const [granularity, setGranularity] = useState<Granularity>("weekly");
@@ -32,11 +32,7 @@ export function TrendsPage() {
   const cumulativeQuery = useCumulativeTrends();
 
   const selectedTrendQuery =
-    granularity === "daily"
-      ? dailyQuery
-      : granularity === "monthly"
-        ? monthlyQuery
-        : weeklyQuery;
+    granularity === "daily" ? dailyQuery : granularity === "monthly" ? monthlyQuery : weeklyQuery;
 
   const selectedTrendData = mapTrendData(selectedTrendQuery.data ?? []);
   const cumulativeTrendData = mapTrendData(cumulativeQuery.data ?? []);
@@ -98,19 +94,23 @@ export function TrendsPage() {
             <span className="status-pill status-pill-muted">Refreshing {granularity} trend</span>
           ) : undefined
         }
-        description="Daily, weekly, and monthly volume views share one chart and switch locally without re-fetching on toggle."
+        description="Compare publication activity at daily, weekly, or monthly intervals."
         eyebrow="Visualization"
         title="Publication Volume"
       >
         <ResponsiveGrid variant="split">
           <Card
-            description="Normalized publication counts"
+            description="Indexed publication counts"
             eyebrow="Connected chart"
             icon={<ChartColumnIncreasing size={18} />}
             title="Publication volume chart"
             tone="accent"
           >
-            <div className="trend-toggle" role="tablist" aria-label="Publication volume granularity">
+            <div
+              className="trend-toggle"
+              role="tablist"
+              aria-label="Publication volume granularity"
+            >
               {(["daily", "weekly", "monthly"] as const).map((value) => (
                 <button
                   aria-selected={granularity === value}

@@ -671,6 +671,8 @@ separate discovery behavior.
 | Repeated `topic_id` | No topic restriction | Zero, one or two positive known IDs. Two IDs mean **both topics**, not either. |
 | `category` | No category restriction | Known `dim_category.category_code`; trimmed and case-insensitively resolved to its stored code. Blank, unknown or ambiguous codes return 422. |
 | `category_scope` | `all` | `all` matches any bridge association; `primary` matches `fact_papers.primary_category` exactly. |
+| `q` | No keyword refinement | Optional keyword string up to 200 characters. Trimmed; blank/whitespace preserves the complete evidence cohort. Uses the existing English `to_tsvector(title + abstract) @@ plainto_tsquery` search convention. |
+| `sort` | `published_desc` | `published_desc` (newest), `published_asc` (oldest), or `title_asc` (case-insensitive title A–Z). Unsupported values return 422. |
 | `limit` | `20` | Integer 1–100. |
 | `offset` | `0` | Integer 0–9223372036854775807 (PostgreSQL's representable OFFSET range). |
 
@@ -686,6 +688,7 @@ Examples:
 GET /intelligence/evidence?topic_id=5&date_from=2026-07-06&date_to=2026-07-12
 GET /intelligence/evidence?topic_id=1&topic_id=3&limit=20&offset=20
 GET /intelligence/evidence?topic_id=2&category=cs.CV&category_scope=primary
+GET /intelligence/evidence?topic_id=1&topic_id=3&q=transformer&sort=title_asc
 ```
 
 The standard `{meta, data}` envelope surrounds:
@@ -693,6 +696,7 @@ The standard `{meta, data}` envelope surrounds:
 ```json
 {
   "total": 45,
+  "supporting_total": 45,
   "limit": 20,
   "offset": 0,
   "has_more": true,
@@ -718,10 +722,11 @@ Matching rows are one fact row per stored ID. Separate `EXISTS` predicates avoid
 many-to-many multiplication and implement the two-topic intersection. Pagination
 therefore follows deduplication by construction. Page IDs are selected first,
 then joined to the existing detail view; no per-paper detail queries or duplicate
-author serializer are introduced. Ordering is `published_date DESC, paper_id ASC`.
-Count and records are computed in one SQL statement/snapshot.
+author serializer are introduced. Default ordering remains `published_date DESC, paper_id ASC`. Oldest uses `published_date ASC, paper_id ASC`; title ordering uses `lower(title) COLLATE "C" ASC NULLS LAST, paper_id ASC`. Ordering is applied before LIMIT/OFFSET and repeated in JSON aggregation. Stored/versioned IDs are never stripped or collapsed.
 
-`has_more` is true when `offset + returned_record_count < total`. Offsets at or
+`supporting_total` is the original analytical cohort size, before keyword refinement. `total` is the refined count used by pagination; absent/blank `q` makes both counts equal. The analytical date/topic/category constraints define a materialized cohort; the existing parameterized full-text predicate refines only that cohort. Counts and records come from one SQL statement/snapshot. Query text is bound, and sort fragments come only from a fixed whitelist; neither enters SQL through unchecked interpolation. There is no per-page client filtering, extra count endpoint, schema migration or change to analytical calculations.
+
+`has_more` is true when `offset + returned_record_count < total` (the refined count). Offsets at or
 beyond the total return an empty page, the unchanged total, and false. With no
 category filter, category scope does not further restrict the population. Two
 categories are not supported. Offset pagination is deterministic within a stable
@@ -766,3 +771,10 @@ Shared UTC helpers and schema/ETL contracts remain unchanged. Stored versions co
 as separate IDs; topic classifications can overlap and be noisy. Historical
 coverage remains unknown. Evidence does not add embeddings, semantic similarity,
 search ranking, authentication or AI functionality.
+
+
+### Phase 2I — Searchable evidence validation
+
+The optional parameters preserve all pre-existing evidence defaults and selection semantics. The additive required `data.supporting_total` field supplies the original cohort count alongside filtered `data.total`; existing consumers of `total`, pagination and records retain their behavior when no refinement is requested. Keyword matches include abstracts and use the same English stemming/stop-word conventions as independent paper search, rather than substring or relevance-score semantics. Title sorting is deterministic and case-insensitive using the C collation, with original stored paper IDs resolving ties.
+
+Evidence tests cover keyword binding and sort injection rejection, route validation, title/abstract matches, intersections, primary/all category scopes, empty refinements, both counts, pagination across equal dates/titles, and separately stored arXiv versions. The existing read-only PostgreSQL fixture suite also reconciles evidence against all analytical endpoints; no warehouse writes are required.

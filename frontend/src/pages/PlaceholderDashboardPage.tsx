@@ -20,9 +20,7 @@ type PlaceholderDashboardPageProps = {
   content: PlaceholderPageContent;
 };
 
-export function PlaceholderDashboardPage({
-  content,
-}: PlaceholderDashboardPageProps) {
+export function PlaceholderDashboardPage({ content }: PlaceholderDashboardPageProps) {
   return (
     <PageContainer>
       <PageHeader description={content.description} title={content.title} />

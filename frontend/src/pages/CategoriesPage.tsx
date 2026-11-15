@@ -25,8 +25,7 @@ import {
 type DistributionMode = "primary" | "all";
 
 export function CategoriesPage() {
-  const [distributionMode, setDistributionMode] =
-    useState<DistributionMode>("primary");
+  const [distributionMode, setDistributionMode] = useState<DistributionMode>("primary");
 
   const primaryQuery = usePrimaryCategoryDistribution();
   const allQuery = useCategoryDistribution();
@@ -34,8 +33,7 @@ export function CategoriesPage() {
   const growthQuery = useCategoryGrowth();
   const matrixQuery = useCategoryTopicMatrix();
 
-  const activeQuery =
-    distributionMode === "primary" ? primaryQuery : allQuery;
+  const activeQuery = distributionMode === "primary" ? primaryQuery : allQuery;
 
   return (
     <PageContainer>
@@ -160,82 +158,81 @@ export function CategoriesPage() {
 
       {/* Category Growth */}
       <PageSection
-      eyebrow="Research momentum"
-      title="Category Growth"
-      description="Identify research categories gaining or losing momentum over the latest 30 days."
-    >
-      <Card
-        eyebrow="Growth analytics"
-        title="Fastest Growing Categories"
-        description="Current 30 days compared with the previous 30 days."
-        icon={<TrendingUp size={18} />}
-        tone="accent"
+        eyebrow="Research momentum"
+        title="Category Growth"
+        description="Identify research categories gaining or losing momentum over the latest 30 days."
       >
-        {growthQuery.isPending ? (
-          <div className="chart-shell" role="status">
-            Loading category growth...
-          </div>
-        ) : growthQuery.isError ? (
-          <ErrorState
-            title="Category growth unavailable"
-            description={
-              growthQuery.error instanceof Error
-                ? growthQuery.error.message
-                : "Unable to retrieve category growth."
-            }
-            onRetry={() => void growthQuery.refetch()}
-            retryLabel="Retry category growth"
-          />
-        ) : growthQuery.data.length === 0 ? (
-          <EmptyState
-            title="No category growth data available"
-            description="Growth analytics will appear once sufficient historical data is available."
-          />
-        ) : (
-          <CategoryGrowthTable data={growthQuery.data} />
-        )}
-      </Card>
-    </PageSection>
+        <Card
+          eyebrow="Growth analytics"
+          title="Fastest Growing Categories"
+          description="Current 30 days compared with the previous 30 days."
+          icon={<TrendingUp size={18} />}
+          tone="accent"
+        >
+          {growthQuery.isPending ? (
+            <div className="chart-shell" role="status">
+              Loading category growth...
+            </div>
+          ) : growthQuery.isError ? (
+            <ErrorState
+              title="Category growth unavailable"
+              description={
+                growthQuery.error instanceof Error
+                  ? growthQuery.error.message
+                  : "Unable to retrieve category growth."
+              }
+              onRetry={() => void growthQuery.refetch()}
+              retryLabel="Retry category growth"
+            />
+          ) : growthQuery.data.length === 0 ? (
+            <EmptyState
+              title="No category growth data available"
+              description="Growth analytics will appear once sufficient historical data is available."
+            />
+          ) : (
+            <CategoryGrowthTable data={growthQuery.data} />
+          )}
+        </Card>
+      </PageSection>
 
-        
-    {/* Category-Topic Matrix */}
-    <PageSection
-      eyebrow="Research relationships"
-      title="Category–Topic Matrix"
-      description="Discover how research topics overlap across arXiv categories."
-    >
-      <Card
-        eyebrow="Research intelligence"
-        title="Category–Topic Relationships"
-        description="Explore the number of papers shared between research categories and topics."
-        icon={<Grid3X3 size={18} />}
-        tone="accent"
+      {/* Category-Topic Matrix */}
+      <PageSection
+        eyebrow="Research relationships"
+        title="Category–Topic Matrix"
+        description="Discover how research topics overlap across arXiv categories."
       >
-        {matrixQuery.isPending ? (
-          <div className="chart-shell" role="status">
-            Loading category-topic relationships...
-          </div>
-        ) : matrixQuery.isError ? (
-          <ErrorState
-            title="Category-topic relationships unavailable"
-            description={
-              matrixQuery.error instanceof Error
-                ? matrixQuery.error.message
-                : "Unable to retrieve category-topic relationships."
-            }
-            onRetry={() => void matrixQuery.refetch()}
-            retryLabel="Retry category-topic matrix"
-          />
-        ) : matrixQuery.data.length === 0 ? (
-          <EmptyState
-            title="No category-topic data available"
-            description="Relationships will appear once categorized and topic-tagged papers are available."
-          />
-        ) : (
-          <CategoryTopicMatrix data={matrixQuery.data} />
-        )}
-      </Card>
-    </PageSection>
+        <Card
+          eyebrow="Research intelligence"
+          title="Category–Topic Relationships"
+          description="Explore the number of papers shared between research categories and topics."
+          icon={<Grid3X3 size={18} />}
+          tone="accent"
+        >
+          {matrixQuery.isPending ? (
+            <div className="chart-shell" role="status">
+              Loading category-topic relationships...
+            </div>
+          ) : matrixQuery.isError ? (
+            <ErrorState
+              title="Category-topic relationships unavailable"
+              description={
+                matrixQuery.error instanceof Error
+                  ? matrixQuery.error.message
+                  : "Unable to retrieve category-topic relationships."
+              }
+              onRetry={() => void matrixQuery.refetch()}
+              retryLabel="Retry category-topic matrix"
+            />
+          ) : matrixQuery.data.length === 0 ? (
+            <EmptyState
+              title="No category-topic data available"
+              description="Relationships will appear once categorized and topic-tagged papers are available."
+            />
+          ) : (
+            <CategoryTopicMatrix data={matrixQuery.data} />
+          )}
+        </Card>
+      </PageSection>
     </PageContainer>
   );
 }
@@ -244,12 +241,8 @@ function getToggleStyle(active: boolean) {
   return {
     padding: "8px 14px",
     borderRadius: 8,
-    border: active
-      ? "1px solid var(--color-accent)"
-      : "1px solid var(--color-border)",
-    background: active
-      ? "var(--color-accent)"
-      : "var(--color-surface)",
+    border: active ? "1px solid var(--color-accent)" : "1px solid var(--color-border)",
+    background: active ? "var(--color-accent)" : "var(--color-surface)",
     color: active ? "#ffffff" : "var(--color-text-secondary)",
     fontWeight: 500,
     cursor: "pointer",

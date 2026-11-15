@@ -12,11 +12,7 @@ import { PageHeader } from "../components/layout/PageHeader";
 import { PageSection } from "../components/layout/PageSection";
 import { Card } from "../components/ui/Card";
 
-import {
-  useTopicDistribution,
-  useTopicWeekly,
-  useTopicGrowth,
-} from "../hooks/useTopics";
+import { useTopicDistribution, useTopicWeekly, useTopicGrowth } from "../hooks/useTopics";
 
 export function TopicsPage() {
   const distributionQuery = useTopicDistribution();

@@ -6,6 +6,7 @@ from typing import Annotated, Literal
 from pydantic import AwareDatetime, BaseModel, Field, field_validator, model_validator
 
 Count = Annotated[int, Field(ge=0)]
+EvidenceSort = Literal["published_desc", "published_asc", "title_asc"]
 
 
 class IntelligenceMetadata(BaseModel):
@@ -277,9 +278,10 @@ class EvidenceRecord(BaseModel):
 
 
 class EvidenceData(BaseModel):
-    """One deterministic page and its total from the same database snapshot."""
+    """A deterministic page with refined and original counts from one snapshot."""
 
     total: Count
+    supporting_total: Count
     limit: Annotated[int, Field(ge=1, le=100)]
     offset: Annotated[int, Field(ge=0, le=9223372036854775807)]
     has_more: bool

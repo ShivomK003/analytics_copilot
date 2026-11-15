@@ -119,7 +119,7 @@ export type CategoryTopicMatrixItem = {
   topic_id: number;
   topic_name: string;
   shared_paper_count: number;
-};  
+};
 
 export type AuthorSearchItem = TopAuthorItem & {
   matching_topic_paper_count: number | null;
@@ -205,7 +205,6 @@ export type DashboardHomeResponse = {
   author_statistics: AuthorStatistics;
   latest_papers: LatestPaperItem[];
 };
-
 
 export type PaperSearchParams = {
   query?: string;

@@ -14,6 +14,7 @@ from app.schemas.intelligence import (
     TopicCategoryHeatmapResponse,
     CompositionResponse,
     EvidenceResponse,
+    EvidenceSort,
 )
 from app.services.intelligence_service import (
     AnalyticalWindowError,
@@ -150,10 +151,12 @@ def evidence(
     category_scope: Literal["all", "primary"] = "all",
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0, le=9223372036854775807)] = 0,
+    q: Annotated[str | None, Query(max_length=200)] = None,
+    sort: EvidenceSort = "published_desc",
 ) -> EvidenceResponse:
     """Return a bounded evidence page; topics are conjunctive and categories use exact scope."""
     try:
-        return get_evidence(*dates, topic_ids, category, category_scope, limit, offset)
+        return get_evidence(*dates, topic_ids, category, category_scope, limit, offset, q=q, sort=sort)
     except Exception as exc:
         raise HTTPException(
             status_code=500, detail="Unable to retrieve research evidence."

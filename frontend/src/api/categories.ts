@@ -13,9 +13,7 @@ export function getCategoryDistribution() {
 }
 
 export function getPrimaryCategoryDistribution() {
-  return get<PrimaryCategoryDistributionItem[]>(
-    "/categories/primary-distribution",
-  );
+  return get<PrimaryCategoryDistributionItem[]>("/categories/primary-distribution");
 }
 
 export function getCategoryWeekly() {

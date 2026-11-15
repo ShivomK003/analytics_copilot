@@ -1,9 +1,6 @@
 import { useMemo } from "react";
 
-import {
-  MultiSeriesWeeklyChart,
-  type WeeklySeriesItem,
-} from "./MultiSeriesWeeklyChart";
+import { MultiSeriesWeeklyChart, type WeeklySeriesItem } from "./MultiSeriesWeeklyChart";
 
 import type { TopicWeeklyItem } from "../../types/dashboard";
 

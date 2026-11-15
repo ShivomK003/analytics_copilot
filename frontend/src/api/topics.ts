@@ -1,10 +1,6 @@
 import { get } from "./client";
 
-import type {
-  TopicDistributionItem,
-  TopicWeeklyItem,
-  TopicGrowthItem,
-} from "../types/dashboard";
+import type { TopicDistributionItem, TopicWeeklyItem, TopicGrowthItem } from "../types/dashboard";
 
 export function getTopicDistribution() {
   return get<TopicDistributionItem[]>("/topics/distribution");

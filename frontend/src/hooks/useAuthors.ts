@@ -11,9 +11,7 @@ import type {
   AuthorPapersParams,
 } from "../types/dashboard";
 
-function buildQueryString(
-  params: Record<string, string | number | undefined>,
-): string {
+function buildQueryString(params: Record<string, string | number | undefined>): string {
   const searchParams = new URLSearchParams();
 
   Object.entries(params).forEach(([key, value]) => {
@@ -25,12 +23,7 @@ function buildQueryString(
   return searchParams.toString();
 }
 
-export function useAuthorSearch({
-  query,
-  topic,
-  limit = 10,
-  offset = 0,
-}: AuthorSearchParams = {}) {
+export function useAuthorSearch({ query, topic, limit = 10, offset = 0 }: AuthorSearchParams = {}) {
   return useQuery({
     queryKey: ["authors", "search", query, topic, limit, offset],
     queryFn: () =>
@@ -45,24 +38,17 @@ export function useAuthorSearch({
   });
 }
 
-export function useAuthorCount(
-  query?: string,
-  topic?: string,
-) {
+export function useAuthorCount(query?: string, topic?: string) {
   return useQuery({
     queryKey: ["authors", "count", query, topic],
-    queryFn: () =>
-      get<{ total: number }>(
-        `/authors/count?${buildQueryString({ query, topic })}`,
-      ),
+    queryFn: () => get<{ total: number }>(`/authors/count?${buildQueryString({ query, topic })}`),
   });
 }
 
 export function useAuthorDetails(authorId: number | null) {
   return useQuery({
     queryKey: ["authors", "details", authorId],
-    queryFn: () =>
-      get<TopAuthorItem>(`/authors/${authorId}`),
+    queryFn: () => get<TopAuthorItem>(`/authors/${authorId}`),
     enabled: authorId !== null,
   });
 }
@@ -70,20 +56,12 @@ export function useAuthorDetails(authorId: number | null) {
 export function useAuthorTopics(authorId: number | null) {
   return useQuery({
     queryKey: ["authors", "topics", authorId],
-    queryFn: () =>
-      get<AuthorTopicItem[]>(
-        `/authors/topics?author_id=${authorId}`,
-      ),
+    queryFn: () => get<AuthorTopicItem[]>(`/authors/topics?author_id=${authorId}`),
     enabled: authorId !== null,
   });
 }
 
-export function useAuthorPapers({
-  authorId,
-  topic,
-  limit = 10,
-  offset = 0,
-}: AuthorPapersParams) {
+export function useAuthorPapers({ authorId, topic, limit = 10, offset = 0 }: AuthorPapersParams) {
   return useQuery({
     queryKey: ["authors", "papers", authorId, topic, limit, offset],
     queryFn: () =>
@@ -101,17 +79,13 @@ export function useAuthorPapers({
 export function useAuthorStatistics() {
   return useQuery({
     queryKey: ["authors", "statistics"],
-    queryFn: () =>
-      get<AuthorStatistics>("/authors/statistics"),
+    queryFn: () => get<AuthorStatistics>("/authors/statistics"),
   });
 }
 
 export function useAuthorRankings(limit = 100) {
   return useQuery({
     queryKey: ["authors", "rankings", limit],
-    queryFn: () =>
-      get<TopAuthorItem[]>(
-        `/authors/rankings?limit=${limit}`,
-      ),
+    queryFn: () => get<TopAuthorItem[]>(`/authors/rankings?limit=${limit}`),
   });
 }

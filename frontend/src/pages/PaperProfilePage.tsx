@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { Link, useLocation, useParams } from "react-router-dom";
+import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
 
 import {
   ArrowLeft,
@@ -19,11 +19,7 @@ import { Card } from "../components/ui/Card";
 import { EmptyState } from "../components/feedback/EmptyState";
 import { ErrorState } from "../components/feedback/ErrorState";
 
-import {
-  usePaperDetails,
-  usePaperAuthors,
-  useRelatedPapers,
-} from "../hooks/usePapers";
+import { usePaperDetails, usePaperAuthors, useRelatedPapers } from "../hooks/usePapers";
 
 function formatDate(value: string | null): string {
   if (!value) return "Unavailable";
@@ -42,15 +38,15 @@ function formatDate(value: string | null): string {
 export function PaperProfilePage() {
   const { paperId } = useParams<{ paperId: string }>();
   const location = useLocation();
+  const [params] = useSearchParams();
 
   const navigationState = location.state as {
     returnTo?: string;
   } | null;
 
+  const candidateReturn = params.get("return_to") ?? navigationState?.returnTo;
   const returnTo =
-    navigationState?.returnTo?.startsWith("/papers")
-      ? navigationState.returnTo
-      : "/papers";
+    candidateReturn && /^\/papers(?:\?|$)/.test(candidateReturn) ? candidateReturn : "/papers";
 
   const id = paperId || null;
 
@@ -64,10 +60,7 @@ export function PaperProfilePage() {
     return (
       <PageContainer>
         <BackLink to={returnTo} />
-        <EmptyState
-          title="Invalid paper ID"
-          description="The requested paper ID is missing."
-        />
+        <EmptyState title="Invalid paper ID" description="The requested paper ID is missing." />
       </PageContainer>
     );
   }
@@ -105,10 +98,7 @@ export function PaperProfilePage() {
     return (
       <PageContainer>
         <BackLink to={returnTo} />
-        <EmptyState
-          title="Publication not found"
-          description="No indexed paper matches this ID."
-        />
+        <EmptyState title="Publication not found" description="No indexed paper matches this ID." />
       </PageContainer>
     );
   }
@@ -119,9 +109,7 @@ export function PaperProfilePage() {
 
       <PageHeader
         title={paper.title}
-        description={`arXiv ${paper.paper_id} · ${formatDate(
-          paper.published_date,
-        )}`}
+        description={`arXiv ${paper.paper_id} · ${formatDate(paper.published_date)}`}
       />
 
       <PageSection
@@ -130,11 +118,7 @@ export function PaperProfilePage() {
         description="Publication metadata and external research resources."
       >
         <div style={metricsGridStyle}>
-          <Metric
-            icon={<BookOpen size={18} />}
-            label="arXiv ID"
-            value={paper.paper_id}
-          />
+          <Metric icon={<BookOpen size={18} />} label="arXiv ID" value={paper.paper_id} />
           <Metric
             icon={<CalendarDays size={18} />}
             label="Published"
@@ -188,9 +172,7 @@ export function PaperProfilePage() {
           icon={<FileText size={18} />}
           tone="accent"
         >
-          <p style={abstractStyle}>
-            {paper.abstract?.trim() || "No abstract is available."}
-          </p>
+          <p style={abstractStyle}>{paper.abstract?.trim() || "No abstract is available."}</p>
         </Card>
       </PageSection>
 
@@ -200,27 +182,12 @@ export function PaperProfilePage() {
         description="Research areas and arXiv subject classifications associated with this publication."
       >
         <div style={classificationGridStyle}>
-          <Card
-            eyebrow="Research areas"
-            title="Topics"
-            icon={<Layers size={18} />}
-            tone="accent"
-          >
-            <TagList
-              values={paper.topics}
-              emptyText="No topics assigned."
-            />
+          <Card eyebrow="Research areas" title="Topics" icon={<Layers size={18} />} tone="accent">
+            <TagList values={paper.topics} emptyText="No topics assigned." />
           </Card>
 
-          <Card
-            eyebrow="arXiv taxonomy"
-            title="Categories"
-            icon={<BookOpen size={18} />}
-          >
-            <TagList
-              values={paper.categories}
-              emptyText="No categories assigned."
-            />
+          <Card eyebrow="arXiv taxonomy" title="Categories" icon={<BookOpen size={18} />}>
+            <TagList values={paper.categories} emptyText="No categories assigned." />
           </Card>
         </div>
       </PageSection>
@@ -230,12 +197,7 @@ export function PaperProfilePage() {
         title="Authors"
         description="Explore the indexed researcher profiles associated with this publication."
       >
-        <Card
-          eyebrow="Contributors"
-          title="Paper Authors"
-          icon={<Users size={18} />}
-          tone="accent"
-        >
+        <Card eyebrow="Contributors" title="Paper Authors" icon={<Users size={18} />} tone="accent">
           {authorsQuery.isPending ? (
             <div className="chart-shell" role="status">
               Loading authors...
@@ -315,17 +277,13 @@ export function PaperProfilePage() {
                   style={relatedPaperStyle}
                 >
                   <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={relatedTitleStyle}>
-                      {related.title}
-                    </div>
+                    <div style={relatedTitleStyle}>{related.title}</div>
 
                     <div style={relatedMetadataStyle}>
                       {formatDate(related.published_date)}
                       {" · "}
                       {related.shared_topic_count} shared{" "}
-                      {related.shared_topic_count === 1
-                        ? "topic"
-                        : "topics"}
+                      {related.shared_topic_count === 1 ? "topic" : "topics"}
                     </div>
                   </div>
 
@@ -349,15 +307,7 @@ function BackLink({ to }: { to: string }) {
   );
 }
 
-function Metric({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}) {
+function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
     <div style={metricStyle}>
       <div style={metricLabelStyle}>
@@ -369,13 +319,7 @@ function Metric({
   );
 }
 
-function TagList({
-  values,
-  emptyText,
-}: {
-  values: string[];
-  emptyText: string;
-}) {
+function TagList({ values, emptyText }: { values: string[]; emptyText: string }) {
   if (values.length === 0) {
     return <p style={mutedStyle}>{emptyText}</p>;
   }
@@ -539,10 +483,4 @@ const relatedTitleStyle: CSSProperties = {
 const relatedMetadataStyle: CSSProperties = {
   color: "var(--color-text-secondary)",
   fontSize: 12,
-};
-
-const datasetNoteStyle: CSSProperties = {
-  color: "var(--color-text-secondary)",
-  fontSize: 12,
-  lineHeight: 1.6,
 };

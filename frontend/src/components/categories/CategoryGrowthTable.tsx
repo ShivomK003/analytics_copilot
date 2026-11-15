@@ -52,9 +52,7 @@ function getStatusColor(status: CategoryGrowthItem["growth_status"]) {
 export function CategoryGrowthTable({ data }: CategoryGrowthTableProps) {
   const [showAll, setShowAll] = useState(false);
 
-  const sortedData = [...data].sort(
-    (a, b) => b.absolute_growth - a.absolute_growth,
-  );
+  const sortedData = [...data].sort((a, b) => b.absolute_growth - a.absolute_growth);
 
   const visibleData = showAll ? sortedData : sortedData.slice(0, 10);
 
@@ -69,30 +67,25 @@ export function CategoryGrowthTable({ data }: CategoryGrowthTableProps) {
       >
         <thead>
           <tr>
-            {[
-              "Category",
-              "Previous 30 Days",
-              "Current 30 Days",
-              "Change",
-              "Growth",
-              "Status",
-            ].map((heading) => (
-              <th
-                key={heading}
-                scope="col"
-                style={{
-                  padding: "14px 16px",
-                  borderBottom: "1px solid var(--color-border)",
-                  color: "var(--color-text-muted)",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  textTransform: "uppercase",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {heading}
-              </th>
-            ))}
+            {["Category", "Previous 30 Days", "Current 30 Days", "Change", "Growth", "Status"].map(
+              (heading) => (
+                <th
+                  key={heading}
+                  scope="col"
+                  style={{
+                    padding: "14px 16px",
+                    borderBottom: "1px solid var(--color-border)",
+                    color: "var(--color-text-muted)",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {heading}
+                </th>
+              ),
+            )}
           </tr>
         </thead>
 
@@ -103,21 +96,13 @@ export function CategoryGrowthTable({ data }: CategoryGrowthTableProps) {
                 <strong>{category.category_code}</strong>
               </td>
 
-              <td style={cellStyle}>
-                {numberFormatter.format(category.previous_30_day_count)}
-              </td>
+              <td style={cellStyle}>{numberFormatter.format(category.previous_30_day_count)}</td>
 
-              <td style={cellStyle}>
-                {numberFormatter.format(category.current_30_day_count)}
-              </td>
+              <td style={cellStyle}>{numberFormatter.format(category.current_30_day_count)}</td>
 
-              <td style={cellStyle}>
-                {formatChange(category.absolute_growth)}
-              </td>
+              <td style={cellStyle}>{formatChange(category.absolute_growth)}</td>
 
-              <td style={cellStyle}>
-                {formatGrowth(category.growth_percentage)}
-              </td>
+              <td style={cellStyle}>{formatGrowth(category.growth_percentage)}</td>
 
               <td style={cellStyle}>
                 <span
@@ -158,16 +143,14 @@ export function CategoryGrowthTable({ data }: CategoryGrowthTableProps) {
               cursor: "pointer",
             }}
           >
-            {showAll
-              ? "Show Top 10"
-              : `Show All ${sortedData.length} Categories`}
+            {showAll ? "Show Top 10" : `Show All ${sortedData.length} Categories`}
           </button>
         </div>
       )}
 
       <p className="chart-caption">
-        Growth compares the latest 30-day period with the preceding 30 days.
-        Categories are ranked by absolute increase in paper count.
+        Growth compares the latest 30-day period with the preceding 30 days. Categories are ranked
+        by absolute increase in paper count.
       </p>
     </div>
   );

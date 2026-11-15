@@ -1,12 +1,5 @@
 export type PlaceholderIcon =
-  | "activity"
-  | "topics"
-  | "authors"
-  | "categories"
-  | "trend"
-  | "spark"
-  | "signals"
-  | "papers";
+  "activity" | "topics" | "authors" | "categories" | "trend" | "spark" | "signals" | "papers";
 
 export type PlaceholderCard = {
   title: string;
@@ -50,11 +43,7 @@ export const placeholderPages: Record<string, PlaceholderPageContent> = {
       primaryMetric: "1,464 papers tracked",
       secondaryMetric: "315 published this week",
       growthLabel: "+12% vs last week",
-      chips: [
-        "Tracking 6 AI domains",
-        "Updated daily via pipeline",
-        "Topics detected: 8",
-      ],
+      chips: ["Tracking 6 AI domains", "Updated daily via pipeline", "Topics detected: 8"],
     },
     sections: [
       {
@@ -78,7 +67,8 @@ export const placeholderPages: Record<string, PlaceholderPageContent> = {
           },
           {
             title: "Author activity",
-            detail: "Comparative researcher signals will appear once ranking endpoints are connected.",
+            detail:
+              "Comparative researcher signals will appear once ranking endpoints are connected.",
             icon: "authors",
             tone: "success",
           },
@@ -187,7 +177,8 @@ export const placeholderPages: Record<string, PlaceholderPageContent> = {
       {
         eyebrow: "Readout",
         title: "Trend Summary",
-        description: "Headline indicators are ready for the first live publication movement metrics.",
+        description:
+          "Headline indicators are ready for the first live publication movement metrics.",
         gridVariant: "compact",
         cards: [
           {
@@ -207,7 +198,8 @@ export const placeholderPages: Record<string, PlaceholderPageContent> = {
       {
         eyebrow: "Visualization",
         title: "Publication Volume",
-        description: "Daily, weekly, and monthly volume views will anchor the charting experience here.",
+        description:
+          "Daily, weekly, and monthly volume views will anchor the charting experience here.",
         gridVariant: "wide",
         cards: [
           {
@@ -307,7 +299,8 @@ export const placeholderPages: Record<string, PlaceholderPageContent> = {
           },
           {
             title: "Emerging topic commentary",
-            detail: "Narrative insight callouts will appear with the first topic intelligence release.",
+            detail:
+              "Narrative insight callouts will appear with the first topic intelligence release.",
             icon: "signals",
             tone: "success",
           },
@@ -343,7 +336,8 @@ export const placeholderPages: Record<string, PlaceholderPageContent> = {
       {
         eyebrow: "Cadence",
         title: "Weekly Category Activity",
-        description: "Time-based category comparisons will show how formal subject areas shift over time.",
+        description:
+          "Time-based category comparisons will show how formal subject areas shift over time.",
         gridVariant: "wide",
         cards: [
           {
@@ -364,7 +358,8 @@ export const placeholderPages: Record<string, PlaceholderPageContent> = {
       {
         eyebrow: "Momentum",
         title: "Category Growth",
-        description: "Growth tracking will spotlight rising subject areas once the data layer is active.",
+        description:
+          "Growth tracking will spotlight rising subject areas once the data layer is active.",
         cards: [
           {
             title: "Category growth",
@@ -405,7 +400,8 @@ export const placeholderPages: Record<string, PlaceholderPageContent> = {
       {
         eyebrow: "Readout",
         title: "Collaboration Statistics",
-        description: "Headline collaboration and authorship indicators are staged for live metrics.",
+        description:
+          "Headline collaboration and authorship indicators are staged for live metrics.",
         gridVariant: "compact",
         cards: [
           {
@@ -473,7 +469,8 @@ export const placeholderPages: Record<string, PlaceholderPageContent> = {
       {
         eyebrow: "Controls",
         title: "Paper Controls",
-        description: "The control rail is ready for search, sort, and filtering once the data layer is connected.",
+        description:
+          "The control rail is ready for search, sort, and filtering once the data layer is connected.",
         cards: [
           {
             title: "Search and filters",
@@ -492,7 +489,8 @@ export const placeholderPages: Record<string, PlaceholderPageContent> = {
       {
         eyebrow: "Feed",
         title: "Latest Paper Feed",
-        description: "The feed layout is ready for live paper cards, labels, and metadata previews.",
+        description:
+          "The feed layout is ready for live paper cards, labels, and metadata previews.",
         gridVariant: "wide",
         cards: [
           {

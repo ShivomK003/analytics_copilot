@@ -2,16 +2,9 @@ type PageSkeletonProps = {
   title?: string;
 };
 
-export function PageSkeleton({
-  title = "Loading dashboard section",
-}: PageSkeletonProps) {
+export function PageSkeleton({ title = "Loading dashboard section" }: PageSkeletonProps) {
   return (
-    <div
-      aria-busy="true"
-      aria-label={title}
-      className="page-skeleton"
-      role="status"
-    >
+    <div aria-busy="true" aria-label={title} className="page-skeleton" role="status">
       <div className="page-skeleton-header">
         <span className="skeleton-line skeleton-line-title" />
         <span className="skeleton-line skeleton-line-copy" />

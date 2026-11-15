@@ -45,11 +45,30 @@ class CompositionEvidenceUnitTests(unittest.TestCase):
         from app.schemas.intelligence import EvidenceRecord
         record = EvidenceRecord(paper_id='a',title='Title',abstract=None,published_date='2026-07-01T10:00:00+10:00',authors=[],primary_category=None,arxiv_url=None,pdf_url=None)
         self.assertEqual(record.model_dump(mode='json')['published_date'],'2026-07-01T00:00:00Z')
-        with patch.object(service,'fetch_one',return_value=dict(BOUNDS,total=3,records=[])):
+        with patch.object(service,'fetch_one',return_value=dict(BOUNDS,total=3,supporting_total=3,records=[])):
             result = service.get_evidence(offset=5)
         self.assertEqual(result.data.total,3)
         self.assertFalse(result.data.has_more)
         self.assertEqual(result.data.records,[])
+
+    def test_search_is_bound_and_ordering_is_whitelisted(self):
+        row = dict(BOUNDS, total=0, supporting_total=4, records=[])
+        keyword = "transformer'; drop table fact_papers; --"
+        with patch.object(service, 'fetch_one', return_value=row) as fetch:
+            result = service.get_evidence(date(2026,7,1), date(2026,7,1), [1,2], 'cs.LG', 'primary', q=keyword, sort='title_asc')
+        sql, params = fetch.call_args.args
+        self.assertNotIn(keyword, sql)
+        self.assertIn("plainto_tsquery('english', %s)", sql)
+        self.assertIn('from cohort_papers p', sql)
+        self.assertIn('lower(title) collate "C" asc nulls last, paper_id asc', sql)
+        self.assertEqual(params[-3:], (keyword, 20, 0))
+        self.assertEqual(result.data.supporting_total, 4)
+        self.assertEqual(result.data.total, 0)
+        with patch.object(service, 'fetch_one') as fetch:
+            for sort in ['relevance', 'title; drop table fact_papers']:
+                with self.assertRaises(ValueError):
+                    service.get_evidence(sort=sort)
+            fetch.assert_not_called()
 
     def test_missing_results_and_database_failures_are_errors(self):
         """Neither an absent evidence aggregate nor SQL failure may become empty success."""
@@ -78,17 +97,27 @@ class CompositionEvidenceApiTests(unittest.TestCase):
         """Category codes resolve through the dimension while topic pairs remain conjunctive."""
         def lookup(sql,params=None):
             return [dict(category_code='cs.AI')] if 'category_code' in sql else [dict(topic_id=1),dict(topic_id=2)]
-        with patch.object(filters,'fetch_all',side_effect=lookup), patch.object(service,'fetch_one',return_value=dict(BOUNDS,total=0,records=[])), patch.object(routes,'get_evidence',wraps=service.get_evidence) as call:
+        with patch.object(filters,'fetch_all',side_effect=lookup), patch.object(service,'fetch_one',return_value=dict(BOUNDS,total=0,supporting_total=0,records=[])), patch.object(routes,'get_evidence',wraps=service.get_evidence) as call:
             status,body = request(main.app,'/intelligence/evidence','topic_id=2&topic_id=1&category=CS.AI&limit=7')
             self.assertEqual(status,200)
             self.assertEqual(call.call_args.args[2:5],([1,2],'cs.AI','all'))
-            self.assertEqual(body['data'],dict(total=0,limit=7,offset=0,has_more=False,records=[]))
+            self.assertEqual(body['data'],dict(total=0,supporting_total=0,limit=7,offset=0,has_more=False,records=[]))
             self.assertEqual(set(body),{'meta','data'})
         schema = main.app.openapi()['paths']
         for path,model in [('composition','CompositionResponse'),('evidence','EvidenceResponse')]:
             self.assertEqual(schema['/intelligence/'+path]['get']['responses']['200']['content']['application/json']['schema']['$ref'],'#/components/schemas/'+model)
         for path in ['coverage','topics','momentum','momentum-matrix','relationships','topic-category-heatmap']:
             self.assertIn('/intelligence/'+path,schema)
+
+    def test_keyword_and_sort_validation_and_forwarding(self):
+        for query in ['sort=oldest', 'sort=title_asc%3Bdrop', 'q=' + 'x' * 201]:
+            self.assertEqual(request(main.app, '/intelligence/evidence', query)[0], 422)
+        with patch.object(service, 'fetch_one', return_value=dict(BOUNDS,total=0,supporting_total=6,records=[])), patch.object(routes, 'get_evidence', wraps=service.get_evidence) as call:
+            status, body = request(main.app, '/intelligence/evidence', 'q=transformer&sort=title_asc')
+            self.assertEqual(status, 200)
+            self.assertEqual(call.call_args.kwargs, dict(q='transformer', sort='title_asc'))
+            self.assertEqual(body['data']['supporting_total'], 6)
+            self.assertEqual(body['data']['total'], 0)
 
     def test_failures_are_generic_500(self):
         """Database/service failures remain distinct from valid zero counts."""
@@ -150,7 +179,7 @@ class CompositionEvidenceSqlTests(unittest.TestCase):
 
     def query(self,query,params=None,all_rows=False):
         """Inject immutable fixture CTEs and the production detail-view SELECT into service SQL."""
-        fixtures = FIXTURES
+        fixtures = getattr(self, "fixture_sql", FIXTURES)
         if getattr(self,'empty_corpus',False):
             fixtures = fixtures.replace('from fixture_facts\n','from fixture_facts where false\n')
         if getattr(self,'no_topics',False):
@@ -223,6 +252,45 @@ class CompositionEvidenceSqlTests(unittest.TestCase):
         self.assertEqual(beyond.data.total,6)
         self.assertEqual(beyond.data.records,[])
         self.assertFalse(beyond.data.has_more)
+
+    def search_fixtures(self):
+        self.fixture_sql = FIXTURES.replace("'Title '||paper_id as title", "case when paper_id in ('a','b','e','u') then 'Transformer systems' when paper_id='h' then 'Alpine neural' else 'Other research' end as title").replace("'Abstract'::text as abstract", "case when paper_id in ('b','d') then 'Vision transformer pipelines' else null end::text as abstract")
+
+    def test_evidence_search_refines_exact_cohort_and_counts(self):
+        self.search_fixtures()
+        day = date(2026,7,1)
+        found = self.execute(service.get_evidence, day, day, q='transformers')
+        self.assertEqual((found.data.total, found.data.supporting_total), (3,6))
+        self.assertEqual([r.paper_id for r in found.data.records], ['b','d','a'])
+        abstract = self.execute(service.get_evidence, day, day, q='pipelines')
+        self.assertEqual([r.paper_id for r in abstract.data.records], ['b','d'])
+        both = self.execute(service.get_evidence, day, day, topic_ids=[1,2], q='transformer')
+        self.assertEqual((both.data.total, both.data.supporting_total), (2,2))
+        primary = self.execute(service.get_evidence, day, day, topic_ids=[1], category='cs.LG', category_scope='primary', q='transformer')
+        secondary = self.execute(service.get_evidence, day, day, topic_ids=[1], category='cs.LG', category_scope='all', q='transformer')
+        self.assertEqual((primary.data.total, primary.data.supporting_total), (1,2))
+        self.assertEqual((secondary.data.total, secondary.data.supporting_total), (2,4))
+        empty = self.execute(service.get_evidence, day, day, q='unmatchedkeyword')
+        self.assertEqual((empty.data.total, empty.data.supporting_total, empty.data.records), (0,6,[]))
+        blank = self.execute(service.get_evidence, day, day, q='  ')
+        self.assertEqual((blank.data.total, blank.data.supporting_total), (6,6))
+
+    def test_evidence_sorting_precedes_pagination_with_stable_ids(self):
+        self.search_fixtures()
+        day = date(2026,7,1)
+        expected = {'published_desc': ['b','h','d','f','g','a'], 'published_asc': ['a','d','f','g','b','h'], 'title_asc': ['h','d','f','g','a','b']}
+        for sort, ids in expected.items():
+            pages = [self.execute(service.get_evidence, day, day, sort=sort, limit=2, offset=offset) for offset in (0,2,4)]
+            self.assertEqual([r.paper_id for page in pages for r in page.data.records], ids)
+            self.assertTrue(pages[0].data.has_more)
+            self.assertFalse(pages[-1].data.has_more)
+            self.assertTrue(all(page.data.supporting_total == page.data.total == 6 for page in pages))
+        refined = [self.execute(service.get_evidence, day, day, q='transformer', sort='title_asc', limit=1, offset=offset) for offset in (0,1,2)]
+        self.assertEqual([r.paper_id for page in refined for r in page.data.records], ['d','a','b'])
+        self.fixture_sql = self.fixture_sql.replace("'a'", "'2601.00001v1'").replace("'b'", "'2601.00001v2'")
+        versions = self.execute(service.get_evidence, day, day, topic_ids=[1,2], sort='title_asc')
+        self.assertEqual([r.paper_id for r in versions.data.records], ['2601.00001v1','2601.00001v2'])
+        self.assertEqual(versions.data.supporting_total, 2)
 
     def test_evidence_matches_all_five_analytics(self):
         """Every supported chart cohort is reproducible using inclusive dates and one/two topic IDs."""

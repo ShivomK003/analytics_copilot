@@ -9,14 +9,9 @@ import type {
   RelatedPaper,
 } from "../types/dashboard";
 
-type PaperFilters = Omit<
-  PaperSearchParams,
-  "sort" | "limit" | "offset"
->;
+type PaperFilters = Omit<PaperSearchParams, "sort" | "limit" | "offset">;
 
-function buildQueryString(
-  params: Record<string, string | number | undefined>,
-): string {
+function buildQueryString(params: Record<string, string | number | undefined>): string {
   const searchParams = new URLSearchParams();
 
   Object.entries(params).forEach(([key, value]) => {
@@ -39,18 +34,7 @@ export function usePaperSearch({
   offset = 0,
 }: PaperSearchParams = {}) {
   return useQuery({
-    queryKey: [
-      "papers",
-      "search",
-      query,
-      topic,
-      category,
-      dateFrom,
-      dateTo,
-      sort,
-      limit,
-      offset,
-    ],
+    queryKey: ["papers", "search", query, topic, category, dateFrom, dateTo, sort, limit, offset],
     queryFn: () =>
       get<PaperSearchItem[]>(
         `/papers/search?${buildQueryString({
@@ -67,23 +51,9 @@ export function usePaperSearch({
   });
 }
 
-export function usePaperCount({
-  query,
-  topic,
-  category,
-  dateFrom,
-  dateTo,
-}: PaperFilters = {}) {
+export function usePaperCount({ query, topic, category, dateFrom, dateTo }: PaperFilters = {}) {
   return useQuery({
-    queryKey: [
-      "papers",
-      "count",
-      query,
-      topic,
-      category,
-      dateFrom,
-      dateTo,
-    ],
+    queryKey: ["papers", "count", query, topic, category, dateFrom, dateTo],
     queryFn: () =>
       get<{ total: number }>(
         `/papers/count?${buildQueryString({
@@ -100,10 +70,7 @@ export function usePaperCount({
 export function usePaperDetails(paperId: string | null) {
   return useQuery({
     queryKey: ["papers", "details", paperId],
-    queryFn: () =>
-      get<PaperDetail>(
-        `/papers/${encodeURIComponent(paperId!)}`,
-      ),
+    queryFn: () => get<PaperDetail>(`/papers/${encodeURIComponent(paperId!)}`),
     enabled: Boolean(paperId),
   });
 }
@@ -111,24 +78,16 @@ export function usePaperDetails(paperId: string | null) {
 export function usePaperAuthors(paperId: string | null) {
   return useQuery({
     queryKey: ["papers", "authors", paperId],
-    queryFn: () =>
-      get<PaperAuthor[]>(
-        `/papers/${encodeURIComponent(paperId!)}/authors`,
-      ),
+    queryFn: () => get<PaperAuthor[]>(`/papers/${encodeURIComponent(paperId!)}/authors`),
     enabled: Boolean(paperId),
   });
 }
 
-export function useRelatedPapers(
-  paperId: string | null,
-  limit = 10,
-) {
+export function useRelatedPapers(paperId: string | null, limit = 10) {
   return useQuery({
     queryKey: ["papers", "related", paperId, limit],
     queryFn: () =>
-      get<RelatedPaper[]>(
-        `/papers/${encodeURIComponent(paperId!)}/related?limit=${limit}`,
-      ),
+      get<RelatedPaper[]>(`/papers/${encodeURIComponent(paperId!)}/related?limit=${limit}`),
     enabled: Boolean(paperId),
   });
 }

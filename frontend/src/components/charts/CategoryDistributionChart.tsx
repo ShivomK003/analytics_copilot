@@ -22,9 +22,7 @@ type CategoryDistributionChartProps = {
 
 const MAX_CATEGORIES = 10;
 
-export function CategoryDistributionChart({
-  data,
-}: CategoryDistributionChartProps) {
+export function CategoryDistributionChart({ data }: CategoryDistributionChartProps) {
   if (data.length === 0) {
     return (
       <EmptyState
@@ -66,9 +64,7 @@ export function CategoryDistributionChart({
                 fill: "var(--color-text-muted)",
                 fontSize: 12,
               }}
-              tickFormatter={(value: number) =>
-                new Intl.NumberFormat("en-US").format(value)
-              }
+              tickFormatter={(value: number) => new Intl.NumberFormat("en-US").format(value)}
             />
 
             <YAxis

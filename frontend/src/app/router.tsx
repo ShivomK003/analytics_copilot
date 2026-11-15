@@ -9,6 +9,7 @@ import { TopicsPage } from "../pages/TopicsPage";
 import { TrendsPage } from "../pages/TrendsPage";
 import { AuthorProfilePage } from "../pages/AuthorProfilePage";
 import { PaperProfilePage } from "../pages/PaperProfilePage";
+import { IntelligencePage } from "../pages/IntelligencePage";
 
 export const router = createBrowserRouter([
   {
@@ -17,6 +18,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="/overview" replace /> },
       { path: "overview", element: <OverviewPage /> },
+      { path: "intelligence", element: <IntelligencePage /> },
       { path: "trends", element: <TrendsPage /> },
       { path: "topics", element: <TopicsPage /> },
       { path: "categories", element: <CategoriesPage /> },

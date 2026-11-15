@@ -9,13 +9,7 @@ type ErrorStateProps = {
   retryLabel?: string;
 };
 
-export function ErrorState({
-  title,
-  description,
-  action,
-  onRetry,
-  retryLabel,
-}: ErrorStateProps) {
+export function ErrorState({ title, description, action, onRetry, retryLabel }: ErrorStateProps) {
   return (
     <div className="feedback-state" role="alert">
       <span className="feedback-state-eyebrow">Something needs attention</span>

@@ -35,7 +35,9 @@ from app.schemas.intelligence import (
     EvidenceData,
     EvidenceRecord,
     EvidenceResponse,
+    EvidenceSort,
 )
+from app.services.paper_service import build_paper_filters
 from app.services.research_filters import (
     publication_date_predicate,
     utc_boundaries,
@@ -784,6 +786,8 @@ def get_evidence(
     category_scope: Literal["all", "primary"] = "all",
     limit: int = 20,
     offset: int = 0,
+    q: str | None = None,
+    sort: EvidenceSort = "published_desc",
 ) -> EvidenceResponse:
     """Retrieve a counted, deterministic page of the analytics' dated paper cohort.
 
@@ -810,6 +814,18 @@ def get_evidence(
         else:
             conditions.append("p.primary_category = %s")
         params.append(category)
+    orderings = {
+        "published_desc": "published_date desc, paper_id asc",
+        "published_asc": "published_date asc, paper_id asc",
+        "title_asc": 'lower(title) collate "C" asc nulls last, paper_id asc',
+    }
+    if sort not in orderings:
+        raise ValueError("Unsupported evidence sorting.")
+    keyword = q.strip() if q else None
+    if keyword and len(keyword) > 200:
+        raise ValueError("Evidence keywords must not exceed 200 characters.")
+    keyword_where, keyword_params = build_paper_filters(query=keyword)
+    order_clause = orderings[sort]
     row = fetch_one(
         f"""
         with bounds as (
@@ -817,14 +833,16 @@ def get_evidence(
                    (max(published_date) at time zone 'UTC')::date as observed_date_to,
                    count(*) filter (where published_date is null) as undated_papers
             from fact_papers
-        ), matching_papers as (
-            -- Grain: one fact row per stored ID. EXISTS never expands associations,
-            -- so deduplication precedes both the count and pagination by construction.
-            select p.paper_id, p.published_date from fact_papers p
+        ), cohort_papers as materialized (
+            -- Preserve the original analytical population before keyword refinement.
+            select p.paper_id, p.published_date, p.title, p.abstract from fact_papers p
             where {' and '.join(conditions)}
+        ), matching_papers as (
+            select p.paper_id, p.published_date, p.title from cohort_papers p
+            {keyword_where}
         ), page_ids as (
-            select paper_id, published_date from matching_papers
-            order by published_date desc, paper_id asc limit %s offset %s
+            select paper_id, published_date, title from matching_papers
+            order by {order_clause} limit %s offset %s
         ), records as (
             -- The existing detail view aggregates each bridge separately. Reuse
             -- its authors/fields rather than add another serializer or N+1 queries.
@@ -833,10 +851,11 @@ def get_evidence(
             from page_ids ids join vw_paper_details p on p.paper_id = ids.paper_id
         )
         select bounds.*, (select count(*) from matching_papers) as total,
-            coalesce((select jsonb_agg(to_jsonb(r) order by r.published_date desc, r.paper_id asc)
+            (select count(*) from cohort_papers) as supporting_total,
+            coalesce((select jsonb_agg(to_jsonb(r) order by {order_clause})
                       from records r), '[]'::jsonb) as records
         from bounds;
-        """, (*params, limit, offset),
+        """, (*params, *keyword_params, limit, offset),
     )
     if row is None:
         raise RuntimeError("Evidence aggregation returned no row.")
@@ -844,7 +863,7 @@ def get_evidence(
     return EvidenceResponse(
         meta=_metadata(row, date_from, date_to),
         data=EvidenceData(
-            total=row["total"], limit=limit, offset=offset,
+            total=row["total"], supporting_total=row["supporting_total"], limit=limit, offset=offset,
             has_more=offset + len(records) < row["total"], records=records,
         ),
     )

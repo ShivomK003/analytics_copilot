@@ -29,9 +29,7 @@ function formatGrowth(value: string | number | null) {
 }
 
 export function TopicGrowthTable({ data }: TopicGrowthTableProps) {
-  const sortedData = [...data].sort(
-    (a, b) => b.absolute_growth - a.absolute_growth,
-  );
+  const sortedData = [...data].sort((a, b) => b.absolute_growth - a.absolute_growth);
 
   return (
     <div style={{ overflowX: "auto" }}>
@@ -44,30 +42,25 @@ export function TopicGrowthTable({ data }: TopicGrowthTableProps) {
       >
         <thead>
           <tr>
-            {[
-              "Topic",
-              "Previous 30 Days",
-              "Current 30 Days",
-              "Change",
-              "Growth",
-              "Status",
-            ].map((heading) => (
-              <th
-                key={heading}
-                scope="col"
-                style={{
-                  padding: "14px 16px",
-                  borderBottom: "1px solid var(--color-border)",
-                  color: "var(--color-text-muted)",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  textTransform: "uppercase",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {heading}
-              </th>
-            ))}
+            {["Topic", "Previous 30 Days", "Current 30 Days", "Change", "Growth", "Status"].map(
+              (heading) => (
+                <th
+                  key={heading}
+                  scope="col"
+                  style={{
+                    padding: "14px 16px",
+                    borderBottom: "1px solid var(--color-border)",
+                    color: "var(--color-text-muted)",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {heading}
+                </th>
+              ),
+            )}
           </tr>
         </thead>
 
@@ -78,21 +71,13 @@ export function TopicGrowthTable({ data }: TopicGrowthTableProps) {
                 <strong>{topic.topic_name}</strong>
               </td>
 
-              <td style={cellStyle}>
-                {numberFormatter.format(topic.previous_30_day_count)}
-              </td>
+              <td style={cellStyle}>{numberFormatter.format(topic.previous_30_day_count)}</td>
 
-              <td style={cellStyle}>
-                {numberFormatter.format(topic.current_30_day_count)}
-              </td>
+              <td style={cellStyle}>{numberFormatter.format(topic.current_30_day_count)}</td>
 
-              <td style={cellStyle}>
-                {formatChange(topic.absolute_growth)}
-              </td>
+              <td style={cellStyle}>{formatChange(topic.absolute_growth)}</td>
 
-              <td style={cellStyle}>
-                {formatGrowth(topic.growth_percentage)}
-              </td>
+              <td style={cellStyle}>{formatGrowth(topic.growth_percentage)}</td>
 
               <td style={cellStyle}>
                 <span
@@ -110,8 +95,8 @@ export function TopicGrowthTable({ data }: TopicGrowthTableProps) {
       </table>
 
       <p className="chart-caption">
-        Growth compares the latest 30-day period with the preceding 30 days.
-        Topics are ranked by absolute increase in paper count.
+        Growth compares the latest 30-day period with the preceding 30 days. Topics are ranked by
+        absolute increase in paper count.
       </p>
     </div>
   );

@@ -1,7 +1,10 @@
-import { useEffect, useState } from "react";
+import { PaperSearchToolbar } from "../components/papers/PaperSearchToolbar";
+import { ContextualPaperExplorer } from "../components/papers/ContextualPaperExplorer";
+import { PaperResults, PaperPagination } from "../components/papers/PaperResults";
+import { useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import { ArrowRight, Search } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
+import { Search } from "lucide-react";
 
 import { PageContainer } from "../components/layout/PageContainer";
 import { PageHeader } from "../components/layout/PageHeader";
@@ -15,10 +18,7 @@ import type { PaperSearchParams } from "../types/dashboard";
 
 const PAGE_SIZE = 10;
 
-const RESEARCH_TOPICS = [
-  "llm", "agents", "rag", "reasoning",
-  "vision", "multimodal", "rl",
-];
+const RESEARCH_TOPICS = ["llm", "agents", "rag", "reasoning", "vision", "multimodal", "rl"];
 
 const SORT_OPTIONS = ["newest", "oldest", "relevance"] as const;
 
@@ -28,20 +28,21 @@ function getSort(value: string | null): SortOption {
   return SORT_OPTIONS.find((option) => option === value) ?? "newest";
 }
 
-function formatDate(value: string | null): string {
-  if (!value) return "Date unavailable";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? value
-    : date.toLocaleDateString("en-AU", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-        timeZone: "UTC",
-      });
+export function PapersPage() {
+  const [params] = useSearchParams();
+  const contextual = [
+    "evidence",
+    "source",
+    "topic_id",
+    "category_scope",
+    "window",
+    "window_weeks",
+    "partial_week",
+  ].some((key) => params.has(key));
+  return contextual ? <ContextualPaperExplorer /> : <IndependentPaperExplorer />;
 }
 
-export function PapersPage() {
+function IndependentPaperExplorer() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const query = searchParams.get("query") ?? "";
@@ -52,18 +53,15 @@ export function PapersPage() {
   const sort = getSort(searchParams.get("sort"));
 
   const rawPage = Number(searchParams.get("page") ?? "1");
-  const currentPage =
-    Number.isSafeInteger(rawPage) && rawPage > 0 ? rawPage : 1;
+  const currentPage = Number.isSafeInteger(rawPage) && rawPage > 0 ? rawPage : 1;
 
   const offset = (currentPage - 1) * PAGE_SIZE;
 
-  const [searchInput, setSearchInput] = useState(query);
-  const [categoryInput, setCategoryInput] = useState(category);
-
-  useEffect(() => {
-    setSearchInput(query);
-    setCategoryInput(category);
-  }, [query, category]);
+  const [draft, setDraft] = useState({ query, category, search: query, categorySearch: category });
+  // URL changes reset committed fields; date and sort edits retain unfinished search text.
+  if (draft.query !== query || draft.category !== category) {
+    setDraft({ query, category, search: query, categorySearch: category });
+  }
 
   const filters: PaperSearchParams = {
     query: query || undefined,
@@ -83,13 +81,7 @@ export function PapersPage() {
   const totalPapers = countQuery.data?.total ?? 0;
   const totalPages = Math.ceil(totalPapers / PAGE_SIZE);
 
-  const isFirstPage = currentPage === 1;
-  const isLastPage =
-    !countQuery.isSuccess || currentPage >= totalPages;
-
-  const returnTo = `/papers${
-    searchParams.toString() ? `?${searchParams.toString()}` : ""
-  }`;
+  const returnTo = `/papers${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
 
   function updateFilters(changes: Record<string, string>) {
     const next = new URLSearchParams(searchParams);
@@ -106,14 +98,13 @@ export function PapersPage() {
   function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     updateFilters({
-      query: searchInput.trim(),
-      category: categoryInput.trim(),
+      query: draft.search.trim(),
+      category: draft.categorySearch.trim(),
     });
   }
 
   function handleReset() {
-    setSearchInput("");
-    setCategoryInput("");
+    setDraft({ query: "", category: "", search: "", categorySearch: "" });
     setSearchParams({});
   }
 
@@ -145,39 +136,35 @@ export function PapersPage() {
           icon={<Search size={18} />}
           tone="accent"
         >
-          <form onSubmit={handleSearch} style={searchFormStyle}>
-            <input
-              type="search"
-              aria-label="Search papers"
-              placeholder="Search titles, abstracts, and keywords..."
-              value={searchInput}
-              onChange={(event) => setSearchInput(event.target.value)}
-              style={inputStyle}
-            />
-
+          <PaperSearchToolbar
+            value={draft.search}
+            onChange={(search) => setDraft({ ...draft, search })}
+            onSubmit={handleSearch}
+            sort={sort}
+            sortOptions={[
+              { value: "newest", label: "Newest first" },
+              { value: "oldest", label: "Oldest first" },
+              { value: "relevance", label: "Relevance" },
+            ]}
+            onSortChange={(value) => updateFilters({ sort: value })}
+          >
             <input
               type="text"
               aria-label="arXiv category"
               placeholder="Category (e.g. cs.LG)"
-              value={categoryInput}
-              onChange={(event) => setCategoryInput(event.target.value)}
-              style={{ ...inputStyle, flex: "0 1 190px" }}
+              value={draft.categorySearch}
+              onChange={(event) => setDraft({ ...draft, categorySearch: event.target.value })}
+              className="form-control category-search"
             />
+          </PaperSearchToolbar>
 
-            <button type="submit" style={primaryButtonStyle}>
-              Search
-            </button>
-          </form>
-
-          <div style={filterGridStyle}>
-            <label style={fieldStyle}>
+          <div className="filter-grid">
+            <label className="filter-field">
               <span>Research topic</span>
               <select
                 value={topic}
-                onChange={(event) =>
-                  updateFilters({ topic: event.target.value })
-                }
-                style={controlStyle}
+                onChange={(event) => updateFilters({ topic: event.target.value })}
+                className="form-control"
               >
                 <option value="">All topics</option>
                 {RESEARCH_TOPICS.map((item) => (
@@ -188,59 +175,36 @@ export function PapersPage() {
               </select>
             </label>
 
-            <label style={fieldStyle}>
+            <label className="filter-field">
               <span>Published from</span>
               <input
                 type="date"
                 value={dateFrom}
                 max={dateTo || undefined}
-                onChange={(event) =>
-                  updateFilters({ date_from: event.target.value })
-                }
-                style={controlStyle}
+                onChange={(event) => updateFilters({ date_from: event.target.value })}
+                className="form-control"
               />
             </label>
 
-            <label style={fieldStyle}>
+            <label className="filter-field">
               <span>Published to</span>
               <input
                 type="date"
                 value={dateTo}
                 min={dateFrom || undefined}
-                onChange={(event) =>
-                  updateFilters({ date_to: event.target.value })
-                }
-                style={controlStyle}
+                onChange={(event) => updateFilters({ date_to: event.target.value })}
+                className="form-control"
               />
-            </label>
-
-            <label style={fieldStyle}>
-              <span>Sort by</span>
-              <select
-                value={sort}
-                onChange={(event) =>
-                  updateFilters({ sort: event.target.value })
-                }
-                style={controlStyle}
-              >
-                <option value="newest">Newest first</option>
-                <option value="oldest">Oldest first</option>
-                <option value="relevance">Relevance</option>
-              </select>
             </label>
           </div>
 
-          <div style={toolbarStyle}>
-            <button
-              type="button"
-              onClick={handleReset}
-              style={secondaryButtonStyle}
-            >
+          <div className="filter-toolbar">
+            <button type="button" onClick={handleReset} className="button button-secondary">
               Reset filters
             </button>
           </div>
 
-          <div style={resultsHeaderStyle}>
+          <div className="results-heading">
             <div>
               <h3 style={resultsTitleStyle}>Matching Publications</h3>
               <p style={mutedStyle}>
@@ -251,9 +215,7 @@ export function PapersPage() {
             </div>
 
             {countQuery.isSuccess && (
-              <span style={countStyle}>
-                {totalPapers.toLocaleString()} papers
-              </span>
+              <span style={countStyle}>{totalPapers.toLocaleString()} papers</span>
             )}
           </div>
 
@@ -279,85 +241,14 @@ export function PapersPage() {
             />
           ) : (
             <>
-              <div style={resultsListStyle}>
-                {papers.map((paper) => (
-                  <Link
-                    key={paper.paper_id}
-                    to={`/papers/${encodeURIComponent(paper.paper_id)}`}
-                    state={{ returnTo }}
-                    style={paperRowStyle}
-                  >
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <h3 style={paperTitleStyle}>{paper.title}</h3>
-
-                      <p style={paperMetadataStyle}>
-                        {formatDate(paper.published_date)}
-                        {paper.primary_category &&
-                          ` · ${paper.primary_category}`}
-                      </p>
-
-                      {paper.abstract && (
-                        <p style={abstractPreviewStyle}>
-                          {paper.abstract}
-                        </p>
-                      )}
-
-                      {paper.topics.length > 0 && (
-                        <div style={tagsStyle}>
-                          {paper.topics.map((item) => (
-                            <span key={item} style={tagStyle}>
-                              {item}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <ArrowRight size={18} style={{ flexShrink: 0 }} />
-                  </Link>
-                ))}
-              </div>
-
-              <div style={paginationStyle}>
-                <button
-                  type="button"
-                  disabled={isFirstPage || papersQuery.isFetching}
-                  onClick={() => changePage(currentPage - 1)}
-                  style={{
-                    ...secondaryButtonStyle,
-                    opacity: isFirstPage ? 0.4 : 1,
-                  }}
-                >
-                  Previous
-                </button>
-
-                <div style={pageInfoStyle}>
-                  {countQuery.isSuccess ? (
-                    <>
-                      <div>
-                        Page {currentPage} of {totalPages}
-                      </div>
-                      <div style={{ marginTop: 4, fontSize: 12 }}>
-                        {totalPapers.toLocaleString()} papers found
-                      </div>
-                    </>
-                  ) : (
-                    <div>Page {currentPage}</div>
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  disabled={isLastPage || papersQuery.isFetching}
-                  onClick={() => changePage(currentPage + 1)}
-                  style={{
-                    ...secondaryButtonStyle,
-                    opacity: isLastPage ? 0.4 : 1,
-                  }}
-                >
-                  Next
-                </button>
-              </div>
+              <PaperResults papers={papers} returnTo={returnTo} />
+              <PaperPagination
+                page={currentPage}
+                total={countQuery.isSuccess ? totalPapers : undefined}
+                pageSize={PAGE_SIZE}
+                busy={papersQuery.isFetching}
+                onPageChange={changePage}
+              />
             </>
           )}
         </Card>
@@ -365,87 +256,6 @@ export function PapersPage() {
     </PageContainer>
   );
 }
-
-const searchFormStyle: CSSProperties = {
-  display: "flex",
-  gap: 12,
-  flexWrap: "wrap",
-  marginBottom: 20,
-};
-
-const inputStyle: CSSProperties = {
-  flex: "1 1 320px",
-  minWidth: 0,
-  padding: "11px 14px",
-  borderRadius: 8,
-  border: "1px solid var(--color-border)",
-  background: "var(--color-surface)",
-  color: "var(--color-text-primary)",
-  fontSize: 14,
-};
-
-const controlStyle: CSSProperties = {
-  width: "100%",
-  boxSizing: "border-box",
-  padding: "10px 12px",
-  borderRadius: 8,
-  border: "1px solid var(--color-border)",
-  background: "var(--color-surface)",
-  color: "var(--color-text-primary)",
-  fontSize: 13,
-};
-
-const filterGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(165px, 1fr))",
-  gap: 14,
-};
-
-const fieldStyle: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 8,
-  fontSize: 13,
-  fontWeight: 500,
-  color: "var(--color-text-secondary)",
-};
-
-const toolbarStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "flex-end",
-  marginTop: 16,
-  marginBottom: 24,
-};
-
-const primaryButtonStyle: CSSProperties = {
-  padding: "10px 18px",
-  borderRadius: 8,
-  border: "1px solid var(--color-accent)",
-  background: "var(--color-accent)",
-  color: "#ffffff",
-  fontWeight: 500,
-  cursor: "pointer",
-};
-
-const secondaryButtonStyle: CSSProperties = {
-  padding: "9px 14px",
-  borderRadius: 8,
-  border: "1px solid var(--color-border)",
-  background: "var(--color-surface)",
-  color: "var(--color-text-secondary)",
-  fontWeight: 500,
-  cursor: "pointer",
-};
-
-const resultsHeaderStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: 12,
-  marginBottom: 16,
-  paddingTop: 20,
-  borderTop: "1px solid var(--color-border)",
-};
 
 const resultsTitleStyle: CSSProperties = {
   margin: 0,
@@ -464,76 +274,4 @@ const countStyle: CSSProperties = {
   fontSize: 13,
   color: "var(--color-text-secondary)",
   whiteSpace: "nowrap",
-};
-
-const resultsListStyle: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 12,
-};
-
-const paperRowStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 16,
-  padding: "18px 20px",
-  borderRadius: 10,
-  border: "1px solid var(--color-border)",
-  background: "var(--color-surface)",
-  textDecoration: "none",
-  color: "var(--color-text-secondary)",
-};
-
-const paperTitleStyle: CSSProperties = {
-  margin: "0 0 8px",
-  fontSize: 16,
-  lineHeight: 1.5,
-  fontWeight: 600,
-  color: "var(--color-text-primary)",
-};
-
-const paperMetadataStyle: CSSProperties = {
-  margin: "0 0 10px",
-  fontSize: 12,
-  color: "var(--color-text-secondary)",
-};
-
-const abstractPreviewStyle: CSSProperties = {
-  margin: "0 0 12px",
-  fontSize: 13,
-  lineHeight: 1.6,
-  color: "var(--color-text-secondary)",
-  display: "-webkit-box",
-  WebkitLineClamp: 3,
-  WebkitBoxOrient: "vertical",
-  overflow: "hidden",
-};
-
-const tagsStyle: CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: 7,
-};
-
-const tagStyle: CSSProperties = {
-  padding: "5px 9px",
-  borderRadius: 6,
-  background: "var(--color-border)",
-  color: "var(--color-text-primary)",
-  fontSize: 11,
-  fontWeight: 500,
-};
-
-const paginationStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: 12,
-  marginTop: 24,
-};
-
-const pageInfoStyle: CSSProperties = {
-  textAlign: "center",
-  color: "var(--color-text-secondary)",
-  fontSize: 13,
 };

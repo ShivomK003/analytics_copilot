@@ -26,9 +26,10 @@ export function useWeeklyTrends() {
   });
 }
 
-export function useMonthlyTrends() {
+export function useMonthlyTrends(enabled = true) {
   return useQuery({
     queryKey: ["trends", "monthly"],
+    enabled,
     queryFn: getMonthlyTrends,
     staleTime: TRENDS_STALE_TIME,
     refetchOnWindowFocus: true,
