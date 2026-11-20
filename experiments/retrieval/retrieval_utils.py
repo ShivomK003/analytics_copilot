@@ -202,3 +202,44 @@ def ndcg_at_k(results, judgments, k=5):
         return 0.0
 
     return dcg / idcg
+
+
+
+def rerank_papers(query, candidates, papers_by_id, reranker, top_k=10):
+    """Rerank retrieved papers using a cross-encoder."""
+
+    if not candidates:
+        return []
+
+    pairs = []
+    valid_candidates = []
+
+    for candidate in candidates:
+        paper_id = candidate["paper_id"]
+        paper = papers_by_id.get(paper_id)
+
+        if paper is None:
+            raise ValueError(f"Missing paper metadata: {paper_id}")
+
+        document = f"{paper['title']}\n\n{paper['abstract']}"
+        pairs.append((query, document))
+        valid_candidates.append(candidate)
+
+    scores = reranker.predict(
+        pairs,
+        batch_size=8,
+        show_progress_bar=False,
+    )
+
+    reranked = [
+        {
+            **candidate,
+            "reranker_score": float(score),
+        }
+        for candidate, score in zip(valid_candidates, scores)
+    ]
+
+    return sorted(
+        reranked,
+        key=lambda item: (-item["reranker_score"], item["paper_id"]),
+    )[:top_k]

@@ -1,22 +1,22 @@
 import json
 import os
+import time
 from pathlib import Path
 
-import nltk
 import pandas as pd
 import psycopg2
 from dotenv import load_dotenv
-from nltk.tokenize import sent_tokenize
 from retrieval_utils import (
-    flexible_keyword_search,
+    # flexible_keyword_search,
     keyword_search,
     ndcg_at_k,
     precision_at_k,
     recall_at_k,
     reciprocal_rank_fusion,
+    rerank_papers,
     semantic_search,
 )
-from sentence_transformers import SentenceTransformer
+from sentence_transformers import CrossEncoder, SentenceTransformer
 
 DATA_DIR = Path(__file__).resolve().parent
 
@@ -51,6 +51,9 @@ model_name = "sentence-transformers/all-MiniLM-L6-v2"
 model = SentenceTransformer(model_name)
 tokenizer = model.tokenizer
 
+reranker = CrossEncoder("BAAI/bge-reranker-v2-m3", max_length=512)
+papers_by_id = {paper["paper_id"]: paper for paper in papers}
+
 
 conn = None
 
@@ -68,30 +71,41 @@ try:
 
     retrieval_evaluation = {}
     for query in query_data:
-        keyword_results = keyword_search(conn, query["query"], paper_ids, top_k=10)
-        flexible_keyword_results = flexible_keyword_search(conn, query["query"], paper_ids, top_k=10)
-        semantic_results = semantic_search(conn, query['query'], paper_ids, model, model_name, top_k=10)
+        keyword_results = keyword_search(conn, query["query"], paper_ids, top_k=30)
+        # flexible_keyword_results = flexible_keyword_search(conn, query["query"], paper_ids, top_k=30)
+        semantic_results = semantic_search(conn, query['query'], paper_ids, model, model_name, top_k=30)
         hybrid_results = reciprocal_rank_fusion(keyword_results, semantic_results)
-        flexible_hybrid_results = reciprocal_rank_fusion(
-            flexible_keyword_results,
-            semantic_results
+        # flexible_hybrid_results = reciprocal_rank_fusion(
+        #     flexible_keyword_results,
+        #     semantic_results
+        # )
+        start = time.perf_counter()
+        reranked_results = rerank_papers(
+            query=query["query"],
+            candidates=hybrid_results,
+            papers_by_id=papers_by_id,
+            reranker=reranker,
+            top_k=10,
         )
+        rerank_seconds = time.perf_counter() - start
 
         print(
             f"{query['id']}: "
             f"Keyword={len(keyword_results)}, "
-            f"Flexible={len(flexible_keyword_results)}, "
+            # f"Flexible={len(flexible_keyword_results)}, "
             f"Semantic={len(semantic_results)}, "
             f"Hybrid={len(hybrid_results)}"
-            f"Flexible Hybrid={len(flexible_hybrid_results)}"
+            # f"Flexible Hybrid={len(flexible_hybrid_results)}"
+            f"Rerank time={rerank_seconds:.2f}s"
         )
 
         all_results = {
             "keyword_results": keyword_results,
-            "flexible_keyword_results": flexible_keyword_results,
+            # "flexible_keyword_results": flexible_keyword_results,
             "semantic_results": semantic_results,
             "hybrid_results": hybrid_results,
-            "flexible_hybrid_results": flexible_hybrid_results
+            # "flexible_hybrid_results": flexible_hybrid_results,
+            "reranked_results": reranked_results,
         }
 
         for result_type, results in all_results.items():
