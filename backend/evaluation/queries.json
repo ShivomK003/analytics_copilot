@@ -1,0 +1,51 @@
+
+[
+  {
+    "id": "Q01",
+    "query": "graph neural networks for molecular property prediction"
+  },
+  {
+    "id": "Q02",
+    "query": "reducing hallucinations in retrieval augmented generation"
+  },
+  {
+    "id": "Q03",
+    "query": "diffusion policies for robotic manipulation"
+  },
+  {
+    "id": "Q04",
+    "query": "parameter efficient fine tuning of large language models"
+  },
+  {
+    "id": "Q05",
+    "query": "transformer models for long term time series forecasting"
+  },
+  {
+    "id": "Q06",
+    "query": "privacy preserving federated learning"
+  },
+  {
+    "id": "Q07",
+    "query": "graph neural networks for anomaly detection"
+  },
+  {
+    "id": "Q08",
+    "query": "reinforcement learning for autonomous robot navigation"
+  },
+  {
+    "id": "Q09",
+    "query": "multimodal learning for medical image analysis"
+  },
+  {
+    "id": "Q10",
+    "query": "synthetic tabular data generation using diffusion models"
+  },
+  {
+    "id": "Q11",
+    "query": "evaluating code generation capabilities of language models"
+  },
+  {
+    "id": "Q12",
+    "query": "interpreting attention mechanisms in transformer models"
+  }
+]

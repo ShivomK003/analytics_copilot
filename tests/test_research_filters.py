@@ -11,14 +11,25 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 
 
+
 def import_without_database(name):
     """Import backend modules without triggering the production connection pool."""
     fake = ModuleType("app.db")
+
     fake.fetch_all = lambda *args: []
     fake.fetch_one = lambda *args: None
     fake.close_connection_pool = lambda: None
+
+    def unavailable_pool(*args, **kwargs):
+        raise AssertionError(
+            "Database pool must not be accessed in database-independent tests."
+        )
+
+    fake.get_pooled_connection = unavailable_pool
+
     original = sys.modules.get("app.db")
     sys.modules["app.db"] = fake
+
     try:
         return importlib.import_module(name)
     finally:
@@ -26,6 +37,7 @@ def import_without_database(name):
             sys.modules.pop("app.db", None)
         else:
             sys.modules["app.db"] = original
+
 
 
 filters = import_without_database("app.services.research_filters")

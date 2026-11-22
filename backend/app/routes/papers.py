@@ -5,6 +5,7 @@ from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query
 
+from app.services.hybrid_search import search_hybrid_papers
 from app.services.paper_service import (
     count_papers,
     get_paper_authors,
@@ -12,6 +13,8 @@ from app.services.paper_service import (
     get_related_papers,
     search_papers,
 )
+from app.services.reranking import search_reranked_papers
+from app.services.semantic_search import search_semantic_papers
 
 router = APIRouter(
     prefix="/papers",
@@ -73,6 +76,111 @@ def paper_search(
         raise HTTPException(
             status_code=500,
             detail="Unable to search papers.",
+        ) from exc
+
+
+
+@router.get("/semantic-search")
+def semantic_paper_search(
+    query: str = Query(
+        ...,
+        min_length=1,
+        max_length=200,
+        description="Natural-language research query.",
+    ),
+    limit: int = Query(
+        default=10,
+        ge=1,
+        le=100,
+    ),
+) -> list[dict]:
+    """Retrieve papers using HNSW semantic similarity."""
+
+    try:
+        return search_semantic_papers(
+            query=query,
+            limit=limit,
+        )
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=str(exc),
+        ) from exc
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to perform semantic search.",
+        ) from exc
+
+
+@router.get("/hybrid-search")
+def hybrid_paper_search(
+    query: str = Query(
+        ...,
+        min_length=1,
+        max_length=200,
+    ),
+    limit: int = Query(
+        default=10,
+        ge=1,
+        le=100,
+    ),
+) -> list[dict]:
+    """Search papers using lexical and semantic RRF fusion."""
+
+    try:
+        return search_hybrid_papers(
+            query=query,
+            limit=limit,
+        )
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=str(exc),
+        ) from exc
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to perform hybrid search.",
+        ) from exc
+
+
+
+@router.get("/reranked-search")
+def reranked_paper_search(
+    query: str = Query(
+        ...,
+        min_length=1,
+        max_length=200,
+    ),
+    limit: int = Query(
+        default=10,
+        ge=1,
+        le=100,
+    ),
+) -> list[dict]:
+    """Search papers using hybrid retrieval and BGE reranking."""
+
+    try:
+        return search_reranked_papers(
+            query=query,
+            limit=limit,
+        )
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=str(exc),
+        ) from exc
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to perform reranked search.",
         ) from exc
 
 

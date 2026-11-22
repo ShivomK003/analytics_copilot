@@ -1,0 +1,346 @@
+{
+  "snapshot_created_at": "2026-11-22T07:22:47.283995+00:00",
+  "query_count": 12,
+  "judgment_count": 230,
+  "precision_relevance_threshold": 1,
+  "summary": {
+    "lexical": {
+      "mean_precision_at_5": 0.8666666666666667,
+      "mean_ndcg_at_10": 0.6922017836883316,
+      "median_sampled_latency_seconds": 0.5729063335020328,
+      "mean_returned_count": 8.333333333333334
+    },
+    "semantic": {
+      "mean_precision_at_5": 0.85,
+      "mean_ndcg_at_10": 0.7286363688315617,
+      "median_sampled_latency_seconds": 1.7727834789984627,
+      "mean_returned_count": 10
+    },
+    "hybrid": {
+      "mean_precision_at_5": 0.9333333333333333,
+      "mean_ndcg_at_10": 0.8385093699119485,
+      "median_sampled_latency_seconds": 2.434827832999872,
+      "mean_returned_count": 10
+    },
+    "reranked": {
+      "mean_precision_at_5": 0.95,
+      "mean_ndcg_at_10": 0.8674192468253928,
+      "median_sampled_latency_seconds": 5.457308833501884,
+      "mean_returned_count": 10
+    }
+  },
+  "per_query": {
+    "Q01": {
+      "lexical": {
+        "precision_at_5": 1.0,
+        "ndcg_at_10": 0.709591642544104,
+        "latency_seconds": 0.5055852919758763,
+        "returned_count": 7
+      },
+      "semantic": {
+        "precision_at_5": 0.8,
+        "ndcg_at_10": 0.7539770182710492,
+        "latency_seconds": 6.310241083003348,
+        "returned_count": 10
+      },
+      "hybrid": {
+        "precision_at_5": 1.0,
+        "ndcg_at_10": 0.8724542628981455,
+        "latency_seconds": 1.731784957984928,
+        "returned_count": 10
+      },
+      "reranked": {
+        "precision_at_5": 1.0,
+        "ndcg_at_10": 0.8461521946662288,
+        "latency_seconds": 12.416150000004563,
+        "returned_count": 10
+      }
+    },
+    "Q02": {
+      "lexical": {
+        "precision_at_5": 1.0,
+        "ndcg_at_10": 0.6732745567650971,
+        "latency_seconds": 0.5823319170158356,
+        "returned_count": 8
+      },
+      "semantic": {
+        "precision_at_5": 0.2,
+        "ndcg_at_10": 0.223503597880891,
+        "latency_seconds": 2.2035951249999925,
+        "returned_count": 10
+      },
+      "hybrid": {
+        "precision_at_5": 0.6,
+        "ndcg_at_10": 0.721344903239006,
+        "latency_seconds": 3.134982374991523,
+        "returned_count": 10
+      },
+      "reranked": {
+        "precision_at_5": 1.0,
+        "ndcg_at_10": 0.8199312790136927,
+        "latency_seconds": 5.061281082977075,
+        "returned_count": 10
+      }
+    },
+    "Q03": {
+      "lexical": {
+        "precision_at_5": 1.0,
+        "ndcg_at_10": 0.7839136016540789,
+        "latency_seconds": 0.6660909169877414,
+        "returned_count": 10
+      },
+      "semantic": {
+        "precision_at_5": 1.0,
+        "ndcg_at_10": 0.8969504402810679,
+        "latency_seconds": 2.5039587919891346,
+        "returned_count": 10
+      },
+      "hybrid": {
+        "precision_at_5": 1.0,
+        "ndcg_at_10": 0.9035650050446238,
+        "latency_seconds": 4.418797000020277,
+        "returned_count": 10
+      },
+      "reranked": {
+        "precision_at_5": 1.0,
+        "ndcg_at_10": 1.0,
+        "latency_seconds": 5.839326624991372,
+        "returned_count": 10
+      }
+    },
+    "Q04": {
+      "lexical": {
+        "precision_at_5": 1.0,
+        "ndcg_at_10": 0.7919672818521463,
+        "latency_seconds": 0.6860227500146721,
+        "returned_count": 10
+      },
+      "semantic": {
+        "precision_at_5": 0.6,
+        "ndcg_at_10": 0.3677158105812913,
+        "latency_seconds": 2.576638707978418,
+        "returned_count": 10
+      },
+      "hybrid": {
+        "precision_at_5": 1.0,
+        "ndcg_at_10": 0.7729914144099592,
+        "latency_seconds": 3.2201731670065783,
+        "returned_count": 10
+      },
+      "reranked": {
+        "precision_at_5": 1.0,
+        "ndcg_at_10": 0.955830517697074,
+        "latency_seconds": 5.825462707987754,
+        "returned_count": 10
+      }
+    },
+    "Q05": {
+      "lexical": {
+        "precision_at_5": 1.0,
+        "ndcg_at_10": 0.8338707547313722,
+        "latency_seconds": 0.572549375006929,
+        "returned_count": 10
+      },
+      "semantic": {
+        "precision_at_5": 0.8,
+        "ndcg_at_10": 0.6621379562069734,
+        "latency_seconds": 1.9498272080090828,
+        "returned_count": 10
+      },
+      "hybrid": {
+        "precision_at_5": 0.8,
+        "ndcg_at_10": 0.8016286372967584,
+        "latency_seconds": 2.1822254169965163,
+        "returned_count": 10
+      },
+      "reranked": {
+        "precision_at_5": 1.0,
+        "ndcg_at_10": 0.9078374240865884,
+        "latency_seconds": 5.53098404200864,
+        "returned_count": 10
+      }
+    },
+    "Q06": {
+      "lexical": {
+        "precision_at_5": 1.0,
+        "ndcg_at_10": 0.7782563114913502,
+        "latency_seconds": 0.6419063749781344,
+        "returned_count": 10
+      },
+      "semantic": {
+        "precision_at_5": 0.8,
+        "ndcg_at_10": 0.8033707757487327,
+        "latency_seconds": 1.5180295839963946,
+        "returned_count": 10
+      },
+      "hybrid": {
+        "precision_at_5": 1.0,
+        "ndcg_at_10": 0.9069212362975007,
+        "latency_seconds": 2.5062321669829544,
+        "returned_count": 10
+      },
+      "reranked": {
+        "precision_at_5": 1.0,
+        "ndcg_at_10": 0.9048032373092418,
+        "latency_seconds": 5.383633624995127,
+        "returned_count": 10
+      }
+    },
+    "Q07": {
+      "lexical": {
+        "precision_at_5": 1.0,
+        "ndcg_at_10": 0.6489315753318465,
+        "latency_seconds": 0.4229560829990078,
+        "returned_count": 7
+      },
+      "semantic": {
+        "precision_at_5": 1.0,
+        "ndcg_at_10": 0.8438042492186786,
+        "latency_seconds": 1.2685120420064777,
+        "returned_count": 10
+      },
+      "hybrid": {
+        "precision_at_5": 1.0,
+        "ndcg_at_10": 0.8064382261673623,
+        "latency_seconds": 1.904301000002306,
+        "returned_count": 10
+      },
+      "reranked": {
+        "precision_at_5": 1.0,
+        "ndcg_at_10": 0.8774322487183986,
+        "latency_seconds": 5.053245499992045,
+        "returned_count": 10
+      }
+    },
+    "Q08": {
+      "lexical": {
+        "precision_at_5": 0.8,
+        "ndcg_at_10": 0.8563023542308759,
+        "latency_seconds": 0.5678358750010375,
+        "returned_count": 10
+      },
+      "semantic": {
+        "precision_at_5": 1.0,
+        "ndcg_at_10": 0.9035650050446238,
+        "latency_seconds": 1.5957397499878425,
+        "returned_count": 10
+      },
+      "hybrid": {
+        "precision_at_5": 0.8,
+        "ndcg_at_10": 0.8610421533275232,
+        "latency_seconds": 2.202222416002769,
+        "returned_count": 10
+      },
+      "reranked": {
+        "precision_at_5": 1.0,
+        "ndcg_at_10": 0.9305687780632227,
+        "latency_seconds": 4.961668333999114,
+        "returned_count": 10
+      }
+    },
+    "Q09": {
+      "lexical": {
+        "precision_at_5": 0.4,
+        "ndcg_at_10": 0.3589542101716347,
+        "latency_seconds": 0.4238251249771565,
+        "returned_count": 2
+      },
+      "semantic": {
+        "precision_at_5": 1.0,
+        "ndcg_at_10": 0.8905202757957813,
+        "latency_seconds": 2.543591583002126,
+        "returned_count": 10
+      },
+      "hybrid": {
+        "precision_at_5": 1.0,
+        "ndcg_at_10": 0.9053206285482486,
+        "latency_seconds": 2.998702915996546,
+        "returned_count": 10
+      },
+      "reranked": {
+        "precision_at_5": 1.0,
+        "ndcg_at_10": 0.9035650050446238,
+        "latency_seconds": 5.892506083007902,
+        "returned_count": 10
+      }
+    },
+    "Q10": {
+      "lexical": {
+        "precision_at_5": 1.0,
+        "ndcg_at_10": 0.7413042793152482,
+        "latency_seconds": 0.44160729201394133,
+        "returned_count": 6
+      },
+      "semantic": {
+        "precision_at_5": 1.0,
+        "ndcg_at_10": 0.8028752818023493,
+        "latency_seconds": 1.4190750420093536,
+        "returned_count": 10
+      },
+      "hybrid": {
+        "precision_at_5": 1.0,
+        "ndcg_at_10": 0.9702500869025406,
+        "latency_seconds": 2.1936834579973947,
+        "returned_count": 10
+      },
+      "reranked": {
+        "precision_at_5": 0.8,
+        "ndcg_at_10": 0.8615615595189816,
+        "latency_seconds": 5.202922666998347,
+        "returned_count": 10
+      }
+    },
+    "Q11": {
+      "lexical": {
+        "precision_at_5": 0.8,
+        "ndcg_at_10": 0.5972536937710925,
+        "latency_seconds": 0.725112583982991,
+        "returned_count": 10
+      },
+      "semantic": {
+        "precision_at_5": 1.0,
+        "ndcg_at_10": 0.8545365814817667,
+        "latency_seconds": 1.5044855419837404,
+        "returned_count": 10
+      },
+      "hybrid": {
+        "precision_at_5": 1.0,
+        "ndcg_at_10": 0.8446849276286176,
+        "latency_seconds": 2.367517000006046,
+        "returned_count": 10
+      },
+      "reranked": {
+        "precision_at_5": 0.8,
+        "ndcg_at_10": 0.7018748147052698,
+        "latency_seconds": 5.578968582995003,
+        "returned_count": 10
+      }
+    },
+    "Q12": {
+      "lexical": {
+        "precision_at_5": 0.4,
+        "ndcg_at_10": 0.5328011424011331,
+        "latency_seconds": 0.5732632919971365,
+        "returned_count": 10
+      },
+      "semantic": {
+        "precision_at_5": 1.0,
+        "ndcg_at_10": 0.7406794336655345,
+        "latency_seconds": 1.318325125001138,
+        "returned_count": 10
+      },
+      "hybrid": {
+        "precision_at_5": 1.0,
+        "ndcg_at_10": 0.6954709571830963,
+        "latency_seconds": 2.502138665993698,
+        "returned_count": 10
+      },
+      "reranked": {
+        "precision_at_5": 0.8,
+        "ndcg_at_10": 0.6994739030813919,
+        "latency_seconds": 5.198150875017745,
+        "returned_count": 10
+      }
+    }
+  }
+}

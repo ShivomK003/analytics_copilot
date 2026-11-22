@@ -1,0 +1,86 @@
+{
+  "query_id": "Q01",
+  "query": "graph neural networks for molecular property prediction",
+  "snapshot_created_at": "2026-11-22T07:22:47.283995+00:00",
+  "judgments_completed": 13,
+  "grade_counts": {
+    "0": 2,
+    "1": 5,
+    "2": 6
+  },
+  "precision_relevance_threshold": 1,
+  "ndcg_gain": "2^grade - 1",
+  "ideal_dcg_at_10": 11.152891950063175,
+  "methods": {
+    "lexical": {
+      "precision_at_5": 1.0,
+      "ndcg_at_10": 0.709591642544104,
+      "latency_seconds": 0.5055852919758763,
+      "returned_count": 7,
+      "ranked_relevance_grades": [
+        1,
+        2,
+        1,
+        2,
+        2,
+        2,
+        2
+      ]
+    },
+    "semantic": {
+      "precision_at_5": 0.8,
+      "ndcg_at_10": 0.7539770182710492,
+      "latency_seconds": 6.310241083003348,
+      "returned_count": 10,
+      "ranked_relevance_grades": [
+        2,
+        2,
+        0,
+        1,
+        2,
+        1,
+        1,
+        2,
+        0,
+        1
+      ]
+    },
+    "hybrid": {
+      "precision_at_5": 1.0,
+      "ndcg_at_10": 0.8724542628981455,
+      "latency_seconds": 1.731784957984928,
+      "returned_count": 10,
+      "ranked_relevance_grades": [
+        2,
+        2,
+        1,
+        2,
+        1,
+        2,
+        2,
+        0,
+        1,
+        1
+      ]
+    },
+    "reranked": {
+      "precision_at_5": 1.0,
+      "ndcg_at_10": 0.8461521946662288,
+      "latency_seconds": 12.416150000004563,
+      "returned_count": 10,
+      "ranked_relevance_grades": [
+        1,
+        2,
+        2,
+        2,
+        2,
+        1,
+        2,
+        2,
+        0,
+        1
+      ]
+    }
+  },
+  "note": "Q01-only evaluation. All 230 judgments required for the full evaluate.py run."
+}
