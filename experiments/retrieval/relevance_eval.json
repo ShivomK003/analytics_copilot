@@ -1,0 +1,132 @@
+[
+    {
+        "query_id": "Q001",
+        "query": "How can AI agents cooperate without exchanging messages?",
+        "documents": [
+        {
+            "doc_id": "D001",
+            "text": "Agents coordinate without exchanging any messages.",
+            "relevance": 2
+        },
+        {
+            "doc_id": "D002",
+            "text": "Agents coordinate by frequently exchanging messages.",
+            "relevance": 0
+        },
+        {
+            "doc_id": "D003",
+            "text": "Agents communicate through a centralized message broker.",
+            "relevance": 0
+        },
+        {
+            "doc_id": "D004",
+            "text": "Agents coordinate using shared environmental observations.",
+            "relevance": 2
+        }
+        ]
+    },
+    {
+        "query_id": "Q002",
+        "query": "How can decentralized AI agents coordinate without a central controller?",
+        "documents": [
+            {
+            "doc_id": "D005",
+            "text": "A central server assigns tasks and synchronizes the decisions of all participating agents.",
+            "relevance": 0
+            },
+            {
+            "doc_id": "D006",
+            "text": "Peer-to-peer consensus allows autonomous agents to agree on joint actions using only neighboring nodes.",
+            "relevance": 2
+            },
+            {
+            "doc_id": "D007",
+            "text": "Independent agents optimize individual rewards but do not coordinate their actions.",
+            "relevance": 1
+            },
+            {
+            "doc_id": "D008",
+            "text": "A swarm achieves collective coordination through local interactions and environmental signals.",
+            "relevance": 2
+            }
+        ]
+        },
+        {
+        "query_id": "Q003",
+        "query": "How is reinforcement learning used to train autonomous robots?",
+        "documents": [
+            {
+            "doc_id": "D009",
+            "text": "Robots learn navigation policies through trial and error using rewards from their environment.",
+            "relevance": 2
+            },
+            {
+            "doc_id": "D010",
+            "text": "Robotic manipulators learn to imitate expert demonstrations using supervised learning.",
+            "relevance": 0
+            },
+            {
+            "doc_id": "D011",
+            "text": "A robot learns control policies using proximal policy optimization in simulation before deployment.",
+            "relevance": 2
+            },
+            {
+            "doc_id": "D012",
+            "text": "A survey compares several machine learning techniques used in autonomous robotics.",
+            "relevance": 1
+            }
+        ]
+        },
+        {
+        "query_id": "Q004",
+        "query": "What techniques improve reasoning in small language models without fine-tuning?",
+        "documents": [
+            {
+            "doc_id": "D013",
+            "text": "Inference-time self-consistency improves reasoning by sampling multiple solution paths without changing model weights.",
+            "relevance": 2
+            },
+            {
+            "doc_id": "D014",
+            "text": "Low-rank adaptation improves language model reasoning by updating a small set of trainable parameters.",
+            "relevance": 0
+            },
+            {
+            "doc_id": "D015",
+            "text": "Structured reasoning prompts improve problem-solving performance without additional model training.",
+            "relevance": 2
+            },
+            {
+            "doc_id": "D016",
+            "text": "Quantization reduces memory consumption and allows compact language models to run on edge devices.",
+            "relevance": 1
+            }
+        ]
+        },
+        {
+        "query_id": "Q005",
+        "query": "How can computer vision models detect anomalies without labeled training data?",
+        "documents": [
+            {
+            "doc_id": "D017",
+            "text": "A self-supervised vision model learns representations from normal images and identifies unusual patterns as anomalies.",
+            "relevance": 2
+            },
+            {
+            "doc_id": "D018",
+            "text": "A supervised image classifier identifies manufacturing defects using thousands of manually labeled examples.",
+            "relevance": 0
+            },
+            {
+            "doc_id": "D019",
+            "text": "An autoencoder trained on unlabeled normal images detects defects using reconstruction error.",
+            "relevance": 2
+            },
+            {
+            "doc_id": "D020",
+            "text": "A vision architecture performs anomaly segmentation, but its training requirements are not specified.",
+            "relevance": 1
+            }
+        ]
+    }
+]
