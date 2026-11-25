@@ -15,7 +15,6 @@ from psycopg2.pool import ThreadedConnectionPool
 
 from app.errors import DatabasePoolTimeout
 
-
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 ENV_PATH = BACKEND_DIR / ".env"
 
@@ -121,10 +120,9 @@ def fetch_all(
 ) -> list[dict[str, Any]]:
     """Execute a SELECT query and return all rows."""
 
-    with get_pooled_connection() as conn:
-        with conn.cursor() as cursor:
-            cursor.execute(query, params)
-            rows = cursor.fetchall()
+    with get_pooled_connection() as conn, conn.cursor() as cursor:
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
 
     return [dict(row) for row in rows]
 
@@ -135,10 +133,9 @@ def fetch_one(
 ) -> dict[str, Any] | None:
     """Execute a SELECT query and return one row."""
 
-    with get_pooled_connection() as conn:
-        with conn.cursor() as cursor:
-            cursor.execute(query, params)
-            row = cursor.fetchone()
+    with get_pooled_connection() as conn, conn.cursor() as cursor:
+        cursor.execute(query, params)
+        row = cursor.fetchone()
 
     return dict(row) if row is not None else None
 
