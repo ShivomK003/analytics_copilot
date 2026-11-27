@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, HTTPException
 
-from app.services.category_service import (
+from backend.app.services.analytics.category_service import (
     get_category_distribution,
     get_category_growth_30d,
     get_category_topic_matrix,

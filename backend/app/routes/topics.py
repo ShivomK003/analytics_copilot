@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, HTTPException
 
-from app.services.topics_service import (
+from backend.app.services.analytics.topics_service import (
     get_topic_distribution,
     get_topic_growth_30d,
     get_topic_weekly_trends,

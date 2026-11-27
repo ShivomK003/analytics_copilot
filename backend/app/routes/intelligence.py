@@ -5,7 +5,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.schemas.intelligence import (
+from backend.app.schemas.intelligence import (
     CoverageResponse,
     TopicsResponse,
     MomentumResponse,
@@ -16,7 +16,7 @@ from app.schemas.intelligence import (
     EvidenceResponse,
     EvidenceSort,
 )
-from app.services.intelligence_service import (
+from backend.app.services.analytics.intelligence_service import (
     AnalyticalWindowError,
     get_coverage,
     get_topic_options,
@@ -27,7 +27,7 @@ from app.services.intelligence_service import (
     get_composition,
     get_evidence,
 )
-from app.services.research_filters import (
+from backend.app.services.analytics.research_filters import (
     analytical_date_range,
     analytical_topic_ids,
     evidence_topic_ids,

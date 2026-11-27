@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { expect, it, vi } from "vitest";
+import { AuthorProfilePage } from "../src/pages/AuthorProfilePage";
 import { AuthorsPage } from "../src/pages/AuthorsPage";
 import { PapersPage } from "../src/pages/PapersPage";
 
@@ -44,6 +45,84 @@ it("preserves author search and topic selection with shared controls", async () 
       ),
     ).toBe(true),
   );
+});
+
+it("retains an author search draft for topic edits and resets it on query navigation", async () => {
+  const { router } = explorer("authors");
+  await screen.findByText("No researchers found");
+  const input = screen.getByLabelText<HTMLInputElement>("Search researcher names");
+  fireEvent.change(input, { target: { value: "unfinished draft" } });
+  fireEvent.change(screen.getByLabelText("Research topic"), { target: { value: "llm" } });
+  expect(input.value).toBe("unfinished draft");
+
+  await act(async () => {
+    await router.navigate("/authors?query=Committed");
+  });
+  expect(input.value).toBe("Committed");
+
+  fireEvent.change(input, { target: { value: "another draft" } });
+  await act(async () => {
+    await router.navigate(-1);
+  });
+  expect(input.value).toBe("");
+
+  fireEvent.change(input, { target: { value: "draft without query" } });
+  fireEvent.click(screen.getByRole("button", { name: "Reset filters" }));
+  expect(input.value).toBe("");
+});
+
+it("opens a new author profile at the first page with all topics", async () => {
+  const fetch = vi.fn((path: string) => {
+    const url = new URL(path, "https://example.test");
+    const papers = Array.from({ length: 11 }, (_, index) => ({
+      paper_id: String(index),
+      title: `Paper ${index}`,
+      topics: [],
+    }));
+    const body =
+      url.pathname === "/authors/topics"
+        ? [{ topic_id: 1, topic_name: "llm", paper_count: 11 }]
+        : url.pathname.endsWith("/papers")
+          ? papers
+          : {
+              author_name: `Researcher ${url.pathname.split("/").at(-1)}`,
+              paper_count: 11,
+              distinct_topic_count: 1,
+              distinct_category_count: 1,
+            };
+    return Promise.resolve(Response.json(body));
+  });
+  vi.stubGlobal("fetch", fetch);
+  const router = createMemoryRouter(
+    [{ path: "/authors/:authorId", element: <AuthorProfilePage /> }],
+    { initialEntries: ["/authors/1"] },
+  );
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={client}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  );
+
+  await screen.findByRole("option", { name: "llm" });
+  fireEvent.change(screen.getByLabelText("Filter by topic"), { target: { value: "llm" } });
+  fireEvent.click(await screen.findByRole("button", { name: "Next" }));
+  await waitFor(() =>
+    expect(
+      fetch.mock.calls.some(([path]) =>
+        path.includes("/authors/1/papers?topic=llm&limit=11&offset=10"),
+      ),
+    ).toBe(true),
+  );
+
+  await act(async () => {
+    await router.navigate("/authors/2");
+  });
+  await screen.findByRole("heading", { name: "Researcher 2" });
+  expect(screen.getByLabelText<HTMLSelectElement>("Filter by topic").value).toBe("");
+  expect(
+    fetch.mock.calls.map(([path]) => path).filter((path) => path.includes("/authors/2/papers")),
+  ).toEqual([expect.stringContaining("/authors/2/papers?limit=11&offset=0")]);
 });
 
 it("preserves paper search, UTC date filters, sorting and reset", async () => {

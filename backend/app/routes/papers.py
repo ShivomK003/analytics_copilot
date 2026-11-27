@@ -5,16 +5,16 @@ from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query
 
-from app.services.hybrid_search import search_hybrid_papers
-from app.services.paper_service import (
+from backend.app.services.retrieval.hybrid_search import search_hybrid_papers
+from backend.app.services.retrieval.paper_service import (
     count_papers,
     get_paper_authors,
     get_paper_by_id,
     get_related_papers,
     search_papers,
 )
-from app.services.reranking import search_reranked_papers
-from app.services.semantic_search import search_semantic_papers
+from backend.app.services.retrieval.reranking import search_reranked_papers
+from backend.app.services.retrieval.semantic_search import search_semantic_papers
 
 router = APIRouter(
     prefix="/papers",

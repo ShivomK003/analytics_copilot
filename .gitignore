@@ -11,3 +11,4 @@ data/clean/
 data/warehouse/
 data/reports/
 data/backfill/
+.DS_Store

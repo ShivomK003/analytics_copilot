@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, HTTPException
 
-from app.services.trends_service import (
+from backend.app.services.analytics.trends_service import (
     get_cumulative_paper_counts,
     get_daily_paper_counts,
     get_monthly_paper_counts,

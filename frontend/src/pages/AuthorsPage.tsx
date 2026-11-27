@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Search, ArrowRight } from "lucide-react";
@@ -30,9 +30,13 @@ export function AuthorsPage() {
 
   const [searchInput, setSearchInput] = useState(searchQuery);
 
-  useEffect(() => {
+  const [previousSearchQuery, setPreviousSearchQuery] = useState(searchQuery);
+
+  // Only a change to the committed query resets the draft.
+  if (searchQuery !== previousSearchQuery) {
+    setPreviousSearchQuery(searchQuery);
     setSearchInput(searchQuery);
-  }, [searchQuery]);
+  }
 
   const authorsQuery = useAuthorSearch({
     query: searchQuery || undefined,

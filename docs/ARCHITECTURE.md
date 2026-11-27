@@ -16,6 +16,34 @@ The system combines traditional data engineering and analytical warehousing with
 - Enable grounded research assistance with traceable citations.
 - Maintain modularity, reproducibility and testability across components.
 
+## Repository Boundaries
+
+- `etl/` ingests and loads warehouse facts and dimensions, then indexes
+  embeddings. The scheduled workflow runs both entry points from the repository
+  root. Warehouse DDL and analytics view definitions live in `database/`.
+- `backend/app/` exposes FastAPI contracts in `routes/` and `schemas/` and
+  owns database access. `services/analytics/` reads warehouse views and
+  defines research filters. `services/retrieval/` implements lexical and
+  semantic search, hybrid rank fusion and experimental cross-encoder reranking.
+- `services/evidence/` consumes retrieval results, finds the best chunks,
+  applies MMR and assembles evidence. It packs the context with a caller-provided
+  token counter and budget. `services/agent/` owns model-specific tokenization,
+  context-window budgeting and chat prompt construction.
+- `frontend/` consumes the HTTP API. `evaluation/retrieval/` measures ranking
+  quality from frozen benchmark inputs and can collect new rankings through the
+  API. Early prototypes live in `experiments/`.
+- `tests/` is the root Python test hierarchy. `tests/backend/` contains service
+  and ASGI tests, including existing opt-in SQL fixtures that share test setup.
+  ETL regressions, evaluator tests and the live warehouse check have dedicated
+  `etl/`, `evaluation/` and `integration/` subdirectories.
+
+Run the evaluator with `uv run python -m evaluation.retrieval.evaluate`.
+Run operational commands from the repository root with `uv run python -m
+scripts.validate_views` or `uv run python -m scripts.validate_dashboard_api`.
+The deployment command `uv run python -m scripts.deploy_views` applies the
+ordered SQL files in `database/analytics/` to the configured database.
+The [README](../README.md) has the local startup commands.
+
 ## 2. High-Level Architecture
 
 ```mermaid
@@ -109,7 +137,7 @@ GitHub Actions provides scheduled execution of the ingestion pipeline.
 
 The pipeline can also be executed manually for development, maintenance and historical ingestion.
 
-Detailed ETL documentation is maintained separately in `etl/docs/`.
+See the [ETL overview](etl/etl_overview.md) for stage inputs, outputs and failure behavior.
 
 ## 4. Data Warehouse
 
@@ -147,6 +175,12 @@ Versioned arXiv identifiers are retained in evidence metadata and source registr
 Database access is encapsulated within backend services.
 
 The backend uses connection pooling, parameterized SQL and transaction management.
+Importing the application does not load database settings or open a connection.
+FastAPI starts the process pool during lifespan startup and closes it during
+shutdown. Standalone pooled consumers open it on first use and close it after
+all checkouts return. The validation scripts handle this cleanup in their
+entry points. The deployment script owns a separate connection for its
+explicit transaction.
 
 Database failures are distinguished from legitimate empty query results.
 
@@ -209,7 +243,8 @@ Semantic retrieval uses the following embedding model:
 
 Publication text is represented using normalized 384-dimensional embeddings.
 
-The current embedding index uses:
+ETL indexing, semantic queries and evidence retrieval use the shared index
+settings in `database/embedding_config.py`. The current embedding index uses:
 
 - Chunk size: 200 tokenizer tokens.
 - Chunk overlap: 30 tokenizer tokens.
@@ -368,7 +403,7 @@ Consequently, the assistant must not imply that it has inspected complete paper 
 
 ### 7.6 Context Construction
 
-Context construction is implemented in `backend/app/services/evidence_budget.py`.
+Context construction is implemented in `backend/app/services/evidence/evidence_budget.py`.
 
 The context builder receives:
 
@@ -445,22 +480,15 @@ The default recommendation limit is five.
 | evidence_assembly.py | Evidence orchestration and metadata assembly |
 | evidence_budget.py | Context packing, source registry and recommendations |
 
-## 8. Generation Layer — Planned
+## 8. Research Agent Foundations
 
 The generation layer will consume the prepared evidence context and produce grounded research answers.
 
-Its planned responsibilities include:
-
-- Generation model integration.
-- Model-specific token counting.
-- Context budget calculation.
-- Prompt construction.
-- Structured answer generation.
-- Insufficient-evidence handling.
-- Citation validation.
-- Generation error handling.
-
-The generation model and provider have not yet been selected.
+The agent service package contains `tokenization.py`, `context_budget.py`
+and `prompt_builder.py`. The budget accepts a caller-supplied formatting
+allowance. The next measurement will calibrate that allowance against a
+provider's reported prompt-token usage. Provider integration, structured
+answer generation and citation validation remain planned.
 
 ### 8.1 Context Budget Management
 

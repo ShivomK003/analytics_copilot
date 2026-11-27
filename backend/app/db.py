@@ -4,7 +4,7 @@ import os
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from pathlib import Path
-from threading import BoundedSemaphore
+from threading import BoundedSemaphore, Lock
 from typing import Any
 
 import psycopg2
@@ -13,12 +13,10 @@ from psycopg2.extensions import connection
 from psycopg2.extras import RealDictCursor
 from psycopg2.pool import ThreadedConnectionPool
 
-from app.errors import DatabasePoolTimeout
+from backend.app.errors import DatabasePoolTimeout
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 ENV_PATH = BACKEND_DIR / ".env"
-
-load_dotenv(ENV_PATH)
 
 
 REQUIRED_DATABASE_VARIABLES = (
@@ -30,43 +28,46 @@ REQUIRED_DATABASE_VARIABLES = (
 )
 
 
-def _validate_database_environment() -> None:
-    """Raise an error when required database settings are missing."""
-
+def _database_config() -> dict[str, Any]:
+    load_dotenv(ENV_PATH)
     missing_variables = [
         variable for variable in REQUIRED_DATABASE_VARIABLES if not os.getenv(variable)
     ]
-
     if missing_variables:
         missing = ", ".join(missing_variables)
-        raise RuntimeError(
-            f"Missing required database environment variables: {missing}"
-        )
+        raise RuntimeError(f"Missing required database environment variables: {missing}")
 
-
-_validate_database_environment()
-
-
-DATABASE_CONFIG = {
-    "host": os.environ["SUPABASE_HOST"],
-    "port": os.environ["SUPABASE_PORT"],
-    "dbname": os.environ["SUPABASE_DB"],
-    "user": os.environ["SUPABASE_USER"],
-    "password": os.environ["SUPABASE_PASSWORD"],
-    "sslmode": os.getenv("SUPABASE_SSLMODE", "require"),
-    "connect_timeout": 15,
-    "cursor_factory": RealDictCursor,
-}
+    return {
+        "host": os.environ["SUPABASE_HOST"],
+        "port": os.environ["SUPABASE_PORT"],
+        "dbname": os.environ["SUPABASE_DB"],
+        "user": os.environ["SUPABASE_USER"],
+        "password": os.environ["SUPABASE_PASSWORD"],
+        "sslmode": os.getenv("SUPABASE_SSLMODE", "require"),
+        "connect_timeout": 15,
+        "cursor_factory": RealDictCursor,
+    }
 
 
 POOL_MAX_CONNECTIONS = 10
 POOL_ACQUIRE_TIMEOUT_SECONDS = 30.0
 
-connection_pool = ThreadedConnectionPool(
-    minconn=1,
-    maxconn=POOL_MAX_CONNECTIONS,
-    **DATABASE_CONFIG,
-)
+_connection_pool: ThreadedConnectionPool | None = None
+_pool_lock = Lock()
+
+
+def initialize_connection_pool() -> ThreadedConnectionPool:
+    """Open the process pool once, including for concurrent standalone callers."""
+    global _connection_pool
+    with _pool_lock:
+        if _connection_pool is None:
+            _connection_pool = ThreadedConnectionPool(
+                minconn=1,
+                maxconn=POOL_MAX_CONNECTIONS,
+                **_database_config(),
+            )
+        return _connection_pool
+
 
 # psycopg2 raises immediately at capacity. Gate every checkout instead so excess
 # requests wait without polling or changing the pool's transaction semantics.
@@ -81,7 +82,7 @@ def get_connection() -> connection:
     control transactions and close the connection themselves.
     """
 
-    return psycopg2.connect(**DATABASE_CONFIG)
+    return psycopg2.connect(**_database_config())
 
 
 @contextmanager
@@ -89,12 +90,13 @@ def get_pooled_connection() -> Iterator[connection]:
     """Wait up to the capacity timeout, then borrow and always return a connection.
 
     This bounds semaphore waiting, not SQL execution or opening a new connection;
-    the latter retains DATABASE_CONFIG's separate connect_timeout.
+    the latter has a separate connect timeout.
     """
     if not _connection_slots.acquire(timeout=POOL_ACQUIRE_TIMEOUT_SECONDS):
         raise DatabasePoolTimeout("Database connection capacity wait expired.")
     try:
-        conn = connection_pool.getconn()
+        pool = initialize_connection_pool()
+        conn = pool.getconn()
         try:
             yield conn
         except Exception:
@@ -102,12 +104,12 @@ def get_pooled_connection() -> Iterator[connection]:
             raise
         finally:
             try:
-                connection_pool.putconn(conn)
+                pool.putconn(conn)
             except Exception:
                 # A failed rollback inside putconn must not retain a broken
                 # checkout. Discard it through the pool's public API.
                 conn.close()
-                connection_pool.putconn(conn, close=True)
+                pool.putconn(conn, close=True)
                 raise
     finally:
         # Release even if checkout, rollback, or return fails.
@@ -159,6 +161,9 @@ def execute_query(
 
 
 def close_connection_pool() -> None:
-    """Close every connection held by the pool."""
-
-    connection_pool.closeall()
+    """Close the process pool after callers have returned all checked-out connections."""
+    global _connection_pool
+    with _pool_lock:
+        if _connection_pool is not None:
+            _connection_pool.closeall()
+            _connection_pool = None

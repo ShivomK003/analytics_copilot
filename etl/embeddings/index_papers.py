@@ -8,20 +8,14 @@ import psycopg2
 from psycopg2.extras import execute_values
 from sentence_transformers import SentenceTransformer
 
-from etl.config import get_database_config
-
-MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
-CHUNK_TOKEN_TARGET = 200
-CHUNK_OVERLAP = 30
-INDEX_VERSION = "v1"
-
-INDEX_ID = (
-    f"{MODEL_NAME}"
-    f"::chunk-{CHUNK_TOKEN_TARGET}"
-    f"::overlap-{CHUNK_OVERLAP}"
-    f"::normalized"
-    f"::{INDEX_VERSION}"
+from database.embedding_config import (
+    CHUNK_OVERLAP,
+    CHUNK_TOKEN_TARGET,
+    INDEX_ID,
+    MODEL_NAME,
+    NORMALIZE_EMBEDDINGS,
 )
+from etl.config import get_database_config
 
 
 def chunk_paper(paper, tokenizer, max_seq_length):
@@ -218,7 +212,7 @@ def write_batch(conn, model, batch):
         embeddings = (
             model.encode_document(
                 all_chunks,
-                normalize_embeddings=True,
+                normalize_embeddings=NORMALIZE_EMBEDDINGS,
                 batch_size=32,
             )
             if all_chunks

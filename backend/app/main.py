@@ -6,35 +6,32 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
-from app.db import close_connection_pool
-from app.errors import DatabasePoolTimeout
-from app.routes.authors import router as authors_router
-from app.routes.categories import router as categories_router
-from app.routes.dashboard import router as dashboard_router
-from app.routes.health import router as health_router
-from app.routes.intelligence import router as intelligence_router
-from app.routes.metrics import router as metrics_router
-from app.routes.papers import router as paper_router
-from app.routes.topics import router as topics_router
-from app.routes.trends import router as trends_router
+from backend.app.db import close_connection_pool, initialize_connection_pool
+from backend.app.errors import DatabasePoolTimeout
+from backend.app.routes.authors import router as authors_router
+from backend.app.routes.categories import router as categories_router
+from backend.app.routes.dashboard import router as dashboard_router
+from backend.app.routes.health import router as health_router
+from backend.app.routes.intelligence import router as intelligence_router
+from backend.app.routes.metrics import router as metrics_router
+from backend.app.routes.papers import router as paper_router
+from backend.app.routes.topics import router as topics_router
+from backend.app.routes.trends import router as trends_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """
-    Manage application startup and shutdown resources.
-
-    Code before yield runs during startup.
-    Code after yield runs during shutdown.
-    """
-
-    yield
-
-    close_connection_pool()
+    """Own the database pool for the lifetime of the API process."""
+    await run_in_threadpool(initialize_connection_pool)
+    try:
+        yield
+    finally:
+        await run_in_threadpool(close_connection_pool)
 
 
 app = FastAPI(

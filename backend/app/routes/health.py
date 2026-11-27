@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
-from app.db import fetch_one
+from backend.app.db import fetch_one
 
 
 router = APIRouter(

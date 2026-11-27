@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, HTTPException, Query
 
-from app.services.dashboard_service import (
+from backend.app.services.analytics.dashboard_service import (
     get_dashboard_home,
     get_dashboard_kpis,
     get_latest_papers,

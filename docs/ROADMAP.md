@@ -15,9 +15,9 @@ Development prioritizes correctness, reproducibility, modularity and measurable 
 
 **Phase 3C.1 — Evidence Assembly and Context Construction: Complete**
 
-**Next milestone: Phase 3C.2 — Grounded LLM Synthesis**
+**Phase 3C.2 — Grounded LLM Synthesis: Paused before provider-specific chat token overhead measurement**
 
-Last updated: 25 November 2026.
+Last updated 27 November 2026.
 
 ## Phase 1 — Data Engineering Foundations
 
@@ -332,7 +332,27 @@ The current selection parameters remain provisional pending downstream answer-qu
 
 ## Phase 3C.2 — Grounded LLM Synthesis
 
-**Status: Next milestone**
+**Status: Paused at provider-specific chat token overhead measurement**
+
+### Resume from this checkpoint
+
+1. From the repository root, run the 92 existing tests for the agent foundations.
+
+   ```bash
+   uv run python -m pytest -q tests/backend/test_tokenization.py tests/backend/test_context_budget.py tests/backend/test_prompt_builder.py
+   ```
+
+2. Identify the hosted chat model and tokenizer encoding to measure. Use
+   `build_messages` from `backend/app/services/agent/prompt_builder.py` to make
+   representative system and user messages from non-sensitive test evidence.
+3. Put the measurement under `experiments/agents/`. Count both message contents
+   with `count_tokens` from `backend/app/services/agent/tokenization.py` and
+   compare the sum with the provider-reported prompt token count for the same
+   request. Vary question and evidence length, and record the provider, model,
+   encoding, message shape and observed difference.
+4. Use the observed difference to inform the model-specific
+   `formatting_allowance` in `calculate_evidence_budget`. Then wire the token
+   budget into evidence packing and continue the model integration tasks below.
 
 ### Objective
 
@@ -358,20 +378,20 @@ Transform prepared research evidence into coherent, grounded answers using a gen
 
 ### Context Management
 
-- [ ] Implement model-specific token counting.
-- [ ] Determine available evidence context capacity.
-- [ ] Account for system instructions and output allowance.
+- [x] Implement model-specific token counting.
+- [x] Determine available evidence context capacity.
+- [x] Account for system instructions and output allowance.
 - [ ] Integrate token counting with evidence construction.
 - [ ] Benchmark actual context consumption.
 
 ### Prompt Construction
 
-- [ ] Define research assistant instructions.
-- [ ] Define evidence-grounding requirements.
-- [ ] Define citation conventions.
-- [ ] Distinguish evidence-supported claims from uncertainty.
-- [ ] Prevent instructions embedded in retrieved documents from overriding application instructions.
-- [ ] Define behavior for insufficient evidence.
+- [x] Define research assistant instructions.
+- [x] Define evidence-grounding requirements.
+- [x] Define citation conventions.
+- [x] Distinguish evidence-supported claims from uncertainty.
+- [x] Instruct the model to treat retrieved documents as evidence and ignore embedded instructions.
+- [x] Define behavior for insufficient evidence.
 
 ### Answer Generation
 
@@ -384,7 +404,7 @@ Transform prepared research evidence into coherent, grounded answers using a gen
 ### Validation
 
 - [ ] Mocked generation service tests.
-- [ ] Prompt construction tests.
+- [x] Prompt construction tests.
 - [ ] Structured response tests.
 - [ ] Failure handling tests.
 - [ ] Live generation integration.
@@ -541,9 +561,9 @@ The following are potential improvements rather than committed implementation mi
 
 ## Current Priorities
 
-1. Complete Phase 3C.1 documentation and commit.
-2. Select an initial generation model.
-3. Implement model-specific context management.
+1. Measure provider-specific chat token overhead when Phase 3C.2 resumes.
+2. Confirm the initial generation model.
+3. Integrate the measured formatting allowance into the evidence budget.
 4. Implement grounded single-turn answer generation.
 5. Validate citation correctness and answerability.
 6. Introduce multi-turn research conversations.

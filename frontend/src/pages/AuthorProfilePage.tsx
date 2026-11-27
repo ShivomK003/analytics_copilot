@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { CSSProperties } from "react";
 
 import { Link, useLocation, useParams } from "react-router-dom";
@@ -47,6 +47,10 @@ export function AuthorProfilePage() {
   const authorId =
     Number.isSafeInteger(parsedAuthorId) && parsedAuthorId > 0 ? parsedAuthorId : null;
 
+  return <AuthorProfile key={authorId} authorId={authorId} returnTo={returnTo} />;
+}
+
+function AuthorProfile({ authorId, returnTo }: { authorId: number | null; returnTo: string }) {
   const [selectedTopic, setSelectedTopic] = useState("");
   const [paperPage, setPaperPage] = useState(1);
 
@@ -72,11 +76,6 @@ export function AuthorProfilePage() {
 
   const hasNextPage = fetchedPapers.length > PAPERS_PER_PAGE;
   const hasPreviousPage = paperPage > 1;
-
-  useEffect(() => {
-    setSelectedTopic("");
-    setPaperPage(1);
-  }, [authorId]);
 
   function handleTopicChange(topic: string) {
     setSelectedTopic(topic);

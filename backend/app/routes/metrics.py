@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
-from app.services.metrics_service import get_dashboard_metrics
+from backend.app.services.analytics.metrics_service import get_dashboard_metrics
 
 
 router = APIRouter(

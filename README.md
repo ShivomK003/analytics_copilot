@@ -87,100 +87,107 @@ flowchart TD
 | Dependency management | uv |
 | Testing | pytest |
 
-## Project Areas
+## Repository Layout
 
-- `etl/`: ingestion, transformation, validation, warehouse loading and embedding generation.
-- `backend/`: API, research intelligence services, retrieval and research assistant foundations.
-- `backend/evaluation/`: retrieval quality evaluation.
-- `backend/tests/`: backend retrieval and evidence pipeline tests.
-- `frontend/`: interactive research intelligence dashboard.
-- `sql/`: warehouse schema and analytical queries.
-- `data/`: generated pipeline outputs and reports.
-- `tests/`: ETL, database and API regression tests.
-- `docs/`: system architecture and development roadmap.
-- `.github/workflows/`: scheduled pipeline automation.
-
-## Main Workflows
-
-### Install Python dependencies
-
-```bash
-uv sync
+```text
+backend/app/       FastAPI routes, schemas and database access
+  services/
+    analytics/     Dashboard, research intelligence and shared research filters
+    retrieval/     Lexical, semantic and hybrid search and experimental reranking
+    evidence/      Best-chunk retrieval, MMR, assembly, packing and source registry
+    agent/         Tokenization, context budgeting and prompt construction
+etl/               Ingestion, validation, warehouse loading and embedding indexing
+database/          Warehouse DDL, ordered analytics views and archived SQL
+evaluation/        Retrieval benchmark code, queries and frozen results
+frontend/          React application and frontend tests
+tests/             Python suites for backend, ETL, evaluation and integration
+docs/              Architecture, roadmap, API, ETL, frontend design and benchmark docs
+scripts/           Database deployment and operational validation commands
+experiments/       Standalone agent and retrieval prototypes
+.github/workflows/ Scheduled ETL and embedding indexing
 ```
 
-Configure the required database connection credentials before running the pipeline or backend.
+Add HTTP contracts in `backend/app/routes/` and `backend/app/schemas/`. Put
+business logic in the relevant service package and Python regressions in the
+matching `tests/` subtree. Keep repeatable retrieval measurements in
+`evaluation/retrieval/` and exploratory work in `experiments/`.
 
-### Run the ETL pipeline
+## Run Locally
 
-From the repository root:
-
-```bash
-uv run python -m etl.run_pipeline
-```
-
-### Run the backend
+From the repository root, install Python 3.12 and the locked dependencies:
 
 ```bash
-cd backend
-uv run uvicorn app.main:app --reload
+uv python install 3.12
+uv sync --locked
 ```
 
-### Run the frontend
+Python dependencies are declared in `pyproject.toml` and resolved in `uv.lock`.
+For local database access, the backend and ETL read `backend/.env` and honor
+process environment variables. See the [ETL runbook](docs/etl/etl_runbook.md)
+for the required variable names.
+
+Start the API from the repository root:
+
+```bash
+uv run uvicorn backend.app.main:app --reload
+```
+
+Start the frontend in a separate shell. Set `VITE_API_BASE_URL` to the API URL
+(for example, `http://localhost:8000`) when serving the API separately.
 
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
-### Run the complete Python test suite
+Run the pipeline and update embeddings from the repository root against the
+intended database. Both commands write to the configured database.
 
-From the repository root:
+```bash
+uv run python -m etl.run_pipeline
+uv run python -m etl.embeddings.index_papers
+```
+
+See the [ETL runbook](docs/etl/etl_runbook.md) for local backfills and the
+[architecture guide](docs/ARCHITECTURE.md#repository-boundaries) for
+database deployment and benchmark commands.
+
+## Tests
 
 ```bash
 uv run python -m pytest -q
 ```
 
-### Run backend-specific tests
+The full suite includes a read-only warehouse connection check. For checks
+without a live database, run the backend, ETL and evaluation suites directly.
+Tokenizer tests use tiktoken's cache or download the tokenizer assets on
+first use.
 
 ```bash
-uv run python -m pytest backend/tests -q
+uv run python -m pytest -q tests/backend tests/etl tests/evaluation
 ```
 
-## Validation
-
-Latest validation at the completion of Phase 3C.1:
-
-- 278 Python tests passed.
-- 28 tests skipped.
-- 94 subtests passed.
-- 126 evidence pipeline tests passed.
-- Live Supabase evidence construction integration passed.
+The backend suite also has opt-in PostgreSQL fixture tests. Set
+`INTELLIGENCE_SQL_TESTS=1` with database access to run those cases.
+For frontend validation, run `npm test`, `npm run lint`,
+`npm run typecheck` and `npm run build` inside `frontend/`.
 
 ## Documentation
 
-### System Documentation
+- [System architecture](docs/ARCHITECTURE.md)
+- [Development roadmap and Phase 3C.2 checkpoint](docs/ROADMAP.md)
+- [Research intelligence API](docs/backend/research_intelligence_api.md)
+- [Analytics metrics](docs/backend/analytic_metrics.md)
+- [ETL overview](docs/etl/etl_overview.md)
+- [Warehouse data model](docs/etl/data_model.md)
+- [ETL runbook](docs/etl/etl_runbook.md)
+- [Frontend design system](docs/DESIGN_SYSTEM.md)
+- [Retrieval benchmark report](docs/evaluation/REPORT_3B5.md)
 
-- [System Architecture](docs/ARCHITECTURE.md)
-- [Development Roadmap](docs/ROADMAP.md)
+## Current Checkpoint
 
-### ETL Documentation
-
-- [ETL Process Guide](etl/ETL_process.md)
-- [ETL Overview](etl/docs/etl_overview.md)
-- [ETL Data Model](etl/docs/data_model.md)
-- [ETL Runbook](etl/docs/etl_runbook.md)
-
-### Frontend Documentation
-
-- [Frontend README](frontend/README.md)
-
-## Current Development Status
-
-The research intelligence and information retrieval foundations are implemented.
-
-Development is currently focused on transforming the retrieval platform into a grounded research assistant capable of synthesizing answers from retrieved scientific evidence.
-
-The current evidence corpus consists of paper titles, abstracts and associated metadata rather than full-text publications.
-
-See the development roadmap for completed milestones, architectural limitations and upcoming work.
+Phase 3C.2 is paused immediately before measuring provider-specific chat
+token overhead. Model-specific tokenization, context budgeting and prompt
+construction have 92 tests. Resume at the checkpoint in the
+[development roadmap](docs/ROADMAP.md#phase-3c2--grounded-llm-synthesis).

@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, HTTPException, Query
 
-from app.services.author_service import (
+from backend.app.services.analytics.author_service import (
     count_authors,
     get_author_by_id,
     get_author_papers,
